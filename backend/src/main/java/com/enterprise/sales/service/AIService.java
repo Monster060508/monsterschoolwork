@@ -76,4 +76,10 @@ public interface AIService {
      * @return 回答内容
      */
     String generateAnswer(String question, String context);
+    
+    /**
+     * 获取所有对话历史列表
+     * @return 对话历史列表
+     */
+    List<Map<String, Object>> getConversations();
 }
