@@ -52,7 +52,7 @@ public class AuthController {
             userInfo.put("id", user.getId());
             userInfo.put("username", user.getUsername());
             userInfo.put("name", user.getName());
-            userInfo.put("role", user.getRole().getDescription());
+            userInfo.put("role", user.getRole().getCode());
             userInfo.put("photoUrl", user.getPhotoUrl());
             
             data.put("user", userInfo);
@@ -100,7 +100,7 @@ public class AuthController {
             userInfo.put("id", user.getId());
             userInfo.put("username", user.getUsername());
             userInfo.put("name", user.getName());
-            userInfo.put("role", user.getRole().getDescription());
+            userInfo.put("role", user.getRole().getCode());
             userInfo.put("photoUrl", user.getPhotoUrl());
             
             return ResponseEntity.ok(createResponse(200, "获取成功", userInfo));

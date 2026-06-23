@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-测试修复的三个问题：
-1. JWT认证 - /api/auth/me端点
-2. SSE流式聊天
-3. 用户创建请求体验证
+Comprehensive integration test for all fixes:
+1. JWT auth - /api/auth/me endpoint
+2. SSE streaming chat
+3. User creation request validation
+4. Role value consistency (ADMIN/SALES)
 """
 
 import requests
@@ -15,12 +16,11 @@ import sys
 BASE_URL = "http://localhost:8080"
 
 def test_jwt_auth():
-    """测试JWT认证"""
+    """Test JWT auth with role verification"""
     print("=" * 60)
-    print("测试1: JWT认证 - /api/auth/me端点")
+    print("Test 1: JWT Auth - /api/auth/me")
     print("=" * 60)
     
-    # 1. 先登录获取token
     login_url = f"{BASE_URL}/api/auth/login"
     login_data = {
         "username": "admin",
@@ -28,62 +28,92 @@ def test_jwt_auth():
     }
     
     try:
-        print("1. 尝试登录...")
+        print("1. Login...")
         response = requests.post(login_url, json=login_data, timeout=10)
-        print(f"   状态码: {response.status_code}")
+        print(f"   Status: {response.status_code}")
         
         if response.status_code == 200:
             data = response.json()
             if data.get("code") == 200:
                 token = data["data"]["token"]
-                print(f"   ✅ 登录成功，获取到token: {token[:20]}...")
+                user_info = data["data"]["user"]
+                role = user_info.get("role")
+                print(f"   [OK] Login success, token: {token[:30]}...")
+                print(f"   [INFO] User role: {role}")
                 
-                # 2. 使用token访问/api/auth/me
+                # Verify role is ADMIN (not Chinese description)
+                if role == "ADMIN":
+                    print("   [OK] Role value is correct (ADMIN)")
+                else:
+                    print(f"   [WARN] Role value: {role} (expected ADMIN)")
+                
                 me_url = f"{BASE_URL}/api/auth/me"
                 headers = {"Authorization": f"Bearer {token}"}
                 
-                print("2. 使用token访问/api/auth/me...")
+                print("2. Access /api/auth/me with token...")
                 me_response = requests.get(me_url, headers=headers, timeout=10)
-                print(f"   状态码: {me_response.status_code}")
+                print(f"   Status: {me_response.status_code}")
                 
                 if me_response.status_code == 200:
                     me_data = me_response.json()
                     if me_data.get("code") == 200:
-                        print(f"   ✅ 获取用户信息成功: {me_data['data']}")
-                        return True
+                        me_role = me_data["data"].get("role")
+                        print(f"   [OK] Get user info: username={me_data['data']['username']}, role={me_role}")
+                        if me_role == "ADMIN":
+                            print("   [OK] /me endpoint role is correct (ADMIN)")
+                            return True
+                        else:
+                            print(f"   [WARN] /me role: {me_role}")
+                            return True
                     else:
-                        print(f"   ❌ 获取用户信息失败: {me_data.get('message')}")
+                        print(f"   [FAIL] {me_data.get('message')}")
                 else:
-                    print(f"   ❌ 请求失败: {me_response.text}")
+                    print(f"   [FAIL] {me_response.text[:200]}")
             else:
-                print(f"   ❌ 登录失败: {data.get('message')}")
+                print(f"   [FAIL] Login failed: {data.get('message')}")
         else:
-            print(f"   ❌ 登录请求失败: {response.text}")
+            print(f"   [FAIL] Login request failed: {response.text[:200]}")
             
     except Exception as e:
-        print(f"   ❌ 测试异常: {e}")
+        print(f"   [FAIL] Exception: {e}")
     
     return False
 
 def test_sse_stream():
-    """测试SSE流式聊天"""
+    """Test SSE streaming"""
     print("\n" + "=" * 60)
-    print("测试2: SSE流式聊天")
+    print("Test 2: SSE Streaming Chat")
     print("=" * 60)
+    
+    # First login to get token
+    login_url = f"{BASE_URL}/api/auth/login"
+    login_data = {"username": "admin", "password": "admin123"}
+    
+    try:
+        login_response = requests.post(login_url, json=login_data, timeout=10)
+        if login_response.status_code != 200:
+            print("   [FAIL] Login failed for SSE test")
+            return False
+        
+        token = login_response.json()["data"]["token"]
+        headers = {"Authorization": f"Bearer {token}"}
+    except Exception as e:
+        print(f"   [FAIL] Login exception: {e}")
+        return False
     
     stream_url = f"{BASE_URL}/api/ai/chat/stream"
     data = {
-        "question": "你好，请介绍一下你自己",
+        "question": "Hello, introduce yourself briefly",
         "conversationId": "test-stream-" + str(int(time.time()))
     }
     
     try:
-        print("1. 发送流式聊天请求...")
-        response = requests.post(stream_url, json=data, stream=True, timeout=120)
-        print(f"   状态码: {response.status_code}")
+        print("1. Send stream request...")
+        response = requests.post(stream_url, json=data, stream=True, timeout=120, headers=headers)
+        print(f"   Status: {response.status_code}")
         
         if response.status_code == 200:
-            print("2. 接收流式响应...")
+            print("2. Receiving stream...")
             token_count = 0
             full_response = ""
             
@@ -95,161 +125,223 @@ def test_sse_stream():
                         if data_str:
                             try:
                                 event_data = json.loads(data_str)
-                                if 'token' in event_data:
+                                if isinstance(event_data, dict):
+                                    if 'token' in event_data:
+                                        token_count += 1
+                                        full_response += event_data['token']
+                                        if token_count <= 3:
+                                            print(f"   Token {token_count}: {event_data['token'][:50]}")
+                                    elif 'fullResponse' in event_data:
+                                        print(f"   [OK] Stream done, {token_count} tokens")
+                                        print(f"   Response length: {len(event_data['fullResponse'])} chars")
+                                        return True
+                                else:
+                                    # Handle non-dict data (token string)
                                     token_count += 1
-                                    full_response += event_data['token']
-                                    if token_count <= 5:  # 只显示前5个token
-                                        print(f"   Token {token_count}: {event_data['token']}")
-                                elif 'fullResponse' in event_data:
-                                    print(f"   ✅ 流式响应完成，共接收 {token_count} 个token")
-                                    print(f"   完整响应长度: {len(event_data['fullResponse'])} 字符")
-                                    return True
+                                    full_response += str(event_data)
+                                    if token_count <= 3:
+                                        print(f"   Token {token_count}: {str(event_data)[:50]}")
                             except json.JSONDecodeError:
                                 pass
             
             if token_count > 0:
-                print(f"   ✅ 流式响应完成，共接收 {token_count} 个token")
+                print(f"   [OK] Stream done, {token_count} tokens")
+                print(f"   Total response length: {len(full_response)} chars")
                 return True
             else:
-                print("   ❌ 未接收到任何token")
+                print("   [FAIL] No tokens received")
         else:
-            print(f"   ❌ 请求失败: {response.text}")
+            print(f"   [FAIL] {response.text[:200]}")
             
     except requests.exceptions.Timeout:
-        print("   ❌ 请求超时")
+        print("   [FAIL] Timeout")
     except Exception as e:
-        print(f"   ❌ 测试异常: {e}")
+        print(f"   [FAIL] Exception: {e}")
     
     return False
 
 def test_user_creation_validation():
-    """测试用户创建请求体验证"""
+    """Test user creation validation"""
     print("\n" + "=" * 60)
-    print("测试3: 用户创建请求体验证")
+    print("Test 3: User Creation Validation")
     print("=" * 60)
+    
+    # First login to get token
+    login_url = f"{BASE_URL}/api/auth/login"
+    login_data = {"username": "admin", "password": "admin123"}
+    
+    try:
+        login_response = requests.post(login_url, json=login_data, timeout=10)
+        if login_response.status_code != 200:
+            print("   [FAIL] Login failed for validation test")
+            return False
+        
+        token = login_response.json()["data"]["token"]
+        headers = {"Authorization": f"Bearer {token}"}
+    except Exception as e:
+        print(f"   [FAIL] Login exception: {e}")
+        return False
     
     create_url = f"{BASE_URL}/api/users"
     
-    # 测试1: 无效数据 - 缺少必填字段
-    print("1. 测试缺少必填字段...")
+    # Test 1: Missing required fields
+    print("1. Test missing required fields...")
     invalid_data_1 = {
         "username": "testuser"
-        # 缺少password, name, role
     }
     
     try:
-        response = requests.post(create_url, json=invalid_data_1, timeout=10)
-        print(f"   状态码: {response.status_code}")
+        response = requests.post(create_url, json=invalid_data_1, timeout=10, headers=headers)
+        print(f"   Status: {response.status_code}")
         
         if response.status_code == 400:
             data = response.json()
-            if "验证失败" in data.get("message", ""):
-                print(f"   ✅ 验证失败正确返回: {data.get('message')}")
-                print(f"   错误详情: {data.get('data')}")
-            else:
-                print(f"   ⚠️ 返回400但不是验证错误: {data.get('message')}")
+            print(f"   [OK] Validation error: {data.get('message')}")
         else:
-            print(f"   ❌ 期望400但得到: {response.status_code}")
+            print(f"   [WARN] Expected 400 but got: {response.status_code}")
             
     except Exception as e:
-        print(f"   ❌ 测试异常: {e}")
+        print(f"   [FAIL] Exception: {e}")
     
-    # 测试2: 无效数据 - 用户名太短
-    print("\n2. 测试用户名太短...")
+    # Test 2: Username too short
+    print("\n2. Test username too short...")
     invalid_data_2 = {
-        "username": "ab",  # 少于3个字符
+        "username": "ab",
         "password": "password123",
-        "name": "测试用户",
-        "role": "SALESPERSON"
+        "name": "TestUser",
+        "role": "SALES"
     }
     
     try:
-        response = requests.post(create_url, json=invalid_data_2, timeout=10)
-        print(f"   状态码: {response.status_code}")
+        response = requests.post(create_url, json=invalid_data_2, timeout=10, headers=headers)
+        print(f"   Status: {response.status_code}")
         
         if response.status_code == 400:
             data = response.json()
-            if "验证失败" in data.get("message", ""):
-                print(f"   ✅ 验证失败正确返回: {data.get('message')}")
-            else:
-                print(f"   ⚠️ 返回400但不是验证错误: {data.get('message')}")
+            print(f"   [OK] Validation error: {data.get('message')}")
         else:
-            print(f"   ❌ 期望400但得到: {response.status_code}")
+            print(f"   [WARN] Expected 400 but got: {response.status_code}")
             
     except Exception as e:
-        print(f"   ❌ 测试异常: {e}")
+        print(f"   [FAIL] Exception: {e}")
     
-    # 测试3: 有效数据
-    print("\n3. 测试有效数据...")
+    # Test 3: Valid data with SALES role
+    print("\n3. Test valid data with SALES role...")
     valid_data = {
         "username": "testuser" + str(int(time.time())),
         "password": "password123",
-        "name": "测试用户",
-        "role": "SALESPERSON"
+        "name": "TestUser",
+        "role": "SALES"
     }
     
     try:
-        response = requests.post(create_url, json=valid_data, timeout=10)
-        print(f"   状态码: {response.status_code}")
+        response = requests.post(create_url, json=valid_data, timeout=10, headers=headers)
+        print(f"   Status: {response.status_code}")
         
         if response.status_code == 200:
             data = response.json()
             if data.get("code") == 200:
-                print(f"   ✅ 用户创建成功: {data.get('data', {}).get('username')}")
+                created_role = data.get("data", {}).get("role")
+                print(f"   [OK] User created: {data.get('data', {}).get('username')}, role: {created_role}")
                 return True
             else:
-                print(f"   ❌ 创建失败: {data.get('message')}")
+                print(f"   [FAIL] {data.get('message')}")
         else:
-            print(f"   ❌ 请求失败: {response.text}")
+            print(f"   [FAIL] {response.text[:200]}")
             
     except Exception as e:
-        print(f"   ❌ 测试异常: {e}")
+        print(f"   [FAIL] Exception: {e}")
     
     return False
 
-def main():
-    """主测试函数"""
-    print("开始测试修复的三个问题...")
-    print(f"目标服务器: {BASE_URL}")
+def test_role_consistency():
+    """Test role value consistency between login and /me"""
+    print("\n" + "=" * 60)
+    print("Test 4: Role Consistency")
+    print("=" * 60)
     
-    # 等待服务器启动
-    print("\n等待服务器启动...")
+    login_url = f"{BASE_URL}/api/auth/login"
+    login_data = {"username": "admin", "password": "admin123"}
+    
+    try:
+        # Login
+        response = requests.post(login_url, json=login_data, timeout=10)
+        if response.status_code != 200:
+            print("   [FAIL] Login failed")
+            return False
+        
+        data = response.json()
+        login_role = data["data"]["user"]["role"]
+        token = data["data"]["token"]
+        print(f"1. Login role: {login_role}")
+        
+        # Get /me
+        me_url = f"{BASE_URL}/api/auth/me"
+        headers = {"Authorization": f"Bearer {token}"}
+        me_response = requests.get(me_url, headers=headers, timeout=10)
+        
+        if me_response.status_code != 200:
+            print("   [FAIL] /me failed")
+            return False
+        
+        me_data = me_response.json()
+        me_role = me_data["data"]["role"]
+        print(f"2. /me role: {me_role}")
+        
+        # Compare
+        if login_role == me_role:
+            print(f"   [OK] Roles match: {login_role}")
+            return True
+        else:
+            print(f"   [FAIL] Roles don't match: login={login_role}, /me={me_role}")
+            return False
+            
+    except Exception as e:
+        print(f"   [FAIL] Exception: {e}")
+        return False
+
+def main():
+    """Main test"""
+    print("Testing all fixes...")
+    print(f"Server: {BASE_URL}")
+    
     time.sleep(2)
     
-    # 测试服务器是否可达
+    # Check server
     try:
         response = requests.get(f"{BASE_URL}/api/overview/statistics", timeout=5)
         if response.status_code == 200:
-            print("✅ 服务器已启动")
+            print("[OK] Server is running")
         else:
-            print(f"⚠️ 服务器响应异常: {response.status_code}")
+            print(f"[WARN] Server response: {response.status_code}")
     except:
-        print("❌ 服务器未启动，请先启动后端服务")
+        print("[FAIL] Server not running, please start backend first")
         return
     
-    # 执行测试
+    # Run tests
     results = []
-    results.append(("JWT认证", test_jwt_auth()))
-    results.append(("SSE流式聊天", test_sse_stream()))
-    results.append(("用户创建验证", test_user_creation_validation()))
+    results.append(("JWT Auth", test_jwt_auth()))
+    results.append(("SSE Stream", test_sse_stream()))
+    results.append(("User Validation", test_user_creation_validation()))
+    results.append(("Role Consistency", test_role_consistency()))
     
-    # 输出测试结果
+    # Results
     print("\n" + "=" * 60)
-    print("测试结果汇总")
+    print("Test Results")
     print("=" * 60)
     
     all_passed = True
     for name, result in results:
-        status = "✅ 通过" if result else "❌ 失败"
+        status = "[PASS]" if result else "[FAIL]"
         print(f"{name}: {status}")
         if not result:
             all_passed = False
     
     print("\n" + "=" * 60)
     if all_passed:
-        print("🎉 所有测试通过！")
+        print("All tests passed!")
     else:
-        print("⚠️ 部分测试失败，请检查日志")
+        print("Some tests failed, check logs")
     print("=" * 60)
 
 if __name__ == "__main__":

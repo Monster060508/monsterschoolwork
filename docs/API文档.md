@@ -10,6 +10,30 @@
 - **字符编码**: UTF-8
 - **认证方式**: JWT Token
 
+## JWT认证说明
+
+### Token获取
+通过登录接口 `POST /api/auth/login` 获取JWT Token。
+
+### Token使用
+在需要认证的接口请求头中添加：
+```
+Authorization: Bearer {your_jwt_token}
+```
+
+### Token有效期
+- 默认有效期：24小时
+- 过期后需要重新登录
+
+### Token结构
+JWT Token包含以下Claims：
+- `userId`: 用户ID
+- `username`: 用户名
+- `role`: 用户角色 (ADMIN/SALES)
+- `sub`: 主题 (用户名)
+- `iat`: 签发时间
+- `exp`: 过期时间
+
 ## 通用响应格式
 ```json
 {
@@ -183,6 +207,15 @@ Authorization: Bearer {token}
 }
 ```
 
+**参数验证规则**:
+| 参数 | 类型 | 必填 | 规则 |
+|------|------|------|------|
+| username | String | 是 | 长度3-50个字符 |
+| password | String | 是 | 长度6-100个字符 |
+| name | String | 是 | 长度不超过50个字符 |
+| role | Enum | 是 | ADMIN(管理员) / SALES(销售) |
+| photoUrl | String | 否 | 头像URL |
+
 **响应示例**:
 ```json
 {
@@ -195,6 +228,18 @@ Authorization: Bearer {token}
     "role": "SALES",
     "photoUrl": "https://oss.example.com/sales1.jpg",
     "createTime": "2024-01-01 10:00:00"
+  }
+}
+```
+
+**验证失败响应示例**:
+```json
+{
+  "code": 400,
+  "message": "参数验证失败",
+  "data": {
+    "username": "用户名长度必须在3-50个字符之间",
+    "password": "密码长度必须在6-100个字符之间"
   }
 }
 ```
@@ -875,7 +920,55 @@ Authorization: Bearer {token}
 }
 ```
 
-### 2. 获取对话历史
+### 2. 流式聊天 (SSE)
+**接口地址**: `POST /api/ai/chat/stream`
+
+**请求头**:
+```
+Authorization: Bearer {token}
+Content-Type: application/json
+Accept: text/event-stream
+```
+
+**请求参数**:
+```json
+{
+  "question": "分析一下热销商品的趋势",
+  "conversationId": "conv_123456"
+}
+```
+
+**响应格式**: Server-Sent Events (SSE)
+
+**事件类型**:
+| 事件名 | 说明 | 数据格式 |
+|--------|------|----------|
+| conversationId | 对话ID | 字符串 |
+| token | 流式输出的token | 字符串 |
+| complete | 完成事件 | JSON对象 |
+| error | 错误事件 | 错误信息字符串 |
+
+**SSE响应示例**:
+```
+event:conversationId
+data:conv_123456
+
+event:token
+data:根据
+
+event:token
+data:数据
+
+event:token
+data:分析
+
+event:complete
+data:{"fullResponse":"根据数据分析，热销商品趋势如下...","tokenCount":150}
+```
+
+**超时设置**: SSE连接超时时间为5分钟
+
+### 3. 获取对话历史
 **接口地址**: `GET /api/ai/conversation/{conversationId}`
 
 **请求头**:
@@ -903,7 +996,7 @@ Authorization: Bearer {token}
 }
 ```
 
-### 3. 清除对话历史
+### 5. 清除对话历史
 **接口地址**: `DELETE /api/ai/conversation/{conversationId}`
 
 **请求头**:
@@ -916,6 +1009,121 @@ Authorization: Bearer {token}
 {
   "code": 200,
   "message": "清除成功",
+  "data": null
+}
+```
+
+## RAG文档问答接口
+
+### 1. 上传并处理文档
+**接口地址**: `POST /api/rag/documents`
+
+**请求头**:
+```
+Authorization: Bearer {token}
+```
+
+**请求参数**:
+```json
+{
+  "title": "销售管理系统使用指南",
+  "content": "# 概述\n本系统是一个企业级销售管理系统...",
+  "metadata": "guide,manual"
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "文档上传处理成功",
+  "data": {
+    "success": true,
+    "sourceDocId": 1,
+    "chunkCount": 15,
+    "message": "文档已成功处理为15个文本块"
+  }
+}
+```
+
+### 2. 语义问答
+**接口地址**: `POST /api/rag/query`
+
+**请求头**:
+```
+Authorization: Bearer {token}
+```
+
+**请求参数**:
+```json
+{
+  "question": "如何创建新订单？",
+  "topK": 3
+}
+```
+
+**参数说明**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| question | String | 是 | 用户问题 |
+| topK | Integer | 否 | 返回相关文档块数量，默认3 |
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "问答成功",
+  "data": {
+    "success": true,
+    "answer": "创建新订单的步骤：1. 进入订单管理页面 2. 点击"新建订单"按钮 3. 填写客户信息和商品信息 4. 提交订单",
+    "sources": [
+      {
+        "content": "订单创建流程说明...",
+        "score": 0.95,
+        "sourceTitle": "销售管理系统使用指南"
+      }
+    ]
+  }
+}
+```
+
+### 3. 获取文档块信息
+**接口地址**: `GET /api/rag/documents/{sourceDocId}/chunks`
+
+**请求头**:
+```
+Authorization: Bearer {token}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": [
+    {
+      "id": 1,
+      "content": "文档块内容...",
+      "chunkIndex": 0,
+      "metadata": "guide"
+    }
+  ]
+}
+```
+
+### 4. 删除文档
+**接口地址**: `DELETE /api/rag/documents/{sourceDocId}`
+
+**请求头**:
+```
+Authorization: Bearer {token}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "删除成功",
   "data": null
 }
 ```
@@ -1263,11 +1471,18 @@ Authorization: Bearer {token}
 ## 接口文档更新
 
 ### 文档版本
-- 文档版本：1.0.0
-- 最后更新：2024-01-01
+- 文档版本：1.1.0
+- 最后更新：2024-12-23
 
 ### 更新记录
-1. **v1.0.0** (2024-01-01)
+1. **v1.1.0** (2024-12-23)
+   - 新增JWT认证详细说明
+   - 新增SSE流式聊天接口文档
+   - 新增用户创建参数验证规则
+   - 修复角色值说明 (ADMIN/SALES)
+   - 优化错误响应格式说明
+
+2. **v1.0.0** (2024-01-01)
    - 初始版本
    - 包含所有核心接口
 

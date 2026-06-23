@@ -33,7 +33,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   function isSalesperson() {
-    return userRole.value === 'SALESPERSON'
+    return userRole.value === 'SALES'
   }
 
   return {

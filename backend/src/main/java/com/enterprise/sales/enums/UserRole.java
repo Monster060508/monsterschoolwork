@@ -1,6 +1,7 @@
 package com.enterprise.sales.enums;
 
 import com.baomidou.mybatisplus.annotation.EnumValue;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum UserRole {
@@ -25,12 +26,27 @@ public enum UserRole {
         return description;
     }
     
-    public static UserRole fromCode(String code) {
+    @JsonCreator
+    public static UserRole fromValue(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException("用户角色不能为空");
+        }
+        // 先按code匹配
         for (UserRole role : values()) {
-            if (role.code.equals(code)) {
+            if (role.code.equalsIgnoreCase(value)) {
                 return role;
             }
         }
-        throw new IllegalArgumentException("未知的用户角色: " + code);
+        // 再按description匹配
+        for (UserRole role : values()) {
+            if (role.description.equals(value)) {
+                return role;
+            }
+        }
+        throw new IllegalArgumentException("未知的用户角色: " + value);
+    }
+    
+    public static UserRole fromCode(String code) {
+        return fromValue(code);
     }
 }
