@@ -6,12 +6,40 @@ import java.util.Map;
 public interface AIService {
     
     /**
+     * 流式输出回调接口
+     */
+    interface StreamCallback {
+        /**
+         * 每个token回调
+         */
+        void onToken(String token);
+        
+        /**
+         * 完成回调
+         */
+        void onComplete(String fullResponse, Map<String, Object> metadata);
+        
+        /**
+         * 错误回调
+         */
+        void onError(String error);
+    }
+    
+    /**
      * 智能问答对话
      * @param question 用户问题
      * @param conversationId 对话ID
      * @return 回答结果
      */
     Map<String, Object> chat(String question, String conversationId);
+    
+    /**
+     * 流式智能问答对话
+     * @param question 用户问题
+     * @param conversationId 对话ID
+     * @param callback 流式回调
+     */
+    void chatStream(String question, String conversationId, StreamCallback callback);
     
     /**
      * 获取对话历史

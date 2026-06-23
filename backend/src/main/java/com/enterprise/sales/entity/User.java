@@ -26,8 +26,17 @@ public class User {
     @TableField("name")
     private String name;
     
+    @TableField("phone")
+    private String phone;
+    
+    @TableField("email")
+    private String email;
+    
     @TableField("photo_url")
     private String photoUrl;
+    
+    @TableField("status")
+    private Integer status;
     
     @TableField("create_time")
     private LocalDateTime createTime;

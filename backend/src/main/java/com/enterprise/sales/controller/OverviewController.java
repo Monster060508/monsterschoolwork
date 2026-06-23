@@ -2,6 +2,7 @@ package com.enterprise.sales.controller;
 
 import com.enterprise.sales.service.OrderService;
 import com.enterprise.sales.service.OrderItemService;
+import com.enterprise.sales.service.PDFService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -19,6 +20,7 @@ public class OverviewController {
     
     private final OrderService orderService;
     private final OrderItemService orderItemService;
+    private final PDFService pdfService;
     
     @GetMapping("/statistics")
     public ResponseEntity<?> getStatistics() {
@@ -67,13 +69,27 @@ public class OverviewController {
     @GetMapping("/export-pdf")
     public ResponseEntity<byte[]> exportOverviewPdf() {
         try {
-            // 这里应该生成总览PDF报表
-            // 简化处理，返回空PDF
-            byte[] pdfBytes = new byte[0];
+            // 获取统计数据
+            Map<String, Object> statistics = new HashMap<>();
+            statistics.put("totalSales", orderService.getTotalSales());
+            statistics.put("monthlySales", orderService.getMonthlySales());
+            statistics.put("dailySales", orderService.getDailyAverageSales());
+            
+            Map<String, Long> statusCount = orderService.countByStatus();
+            statistics.put("totalOrders", statusCount.values().stream().mapToLong(Long::longValue).sum());
+            
+            // 获取销售排行榜
+            List<Map<String, Object>> salesRanking = orderService.getSalesRanking(10);
+            
+            // 获取热销商品
+            List<Map<String, Object>> hotProducts = orderItemService.getHotProducts(10);
+            
+            // 生成PDF
+            byte[] pdfBytes = pdfService.generateOverviewPdf(statistics, salesRanking, hotProducts);
             
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDispositionFormData("attachment", "总览报表.pdf");
+            headers.setContentDispositionFormData("attachment", "总览报表.docx");
             headers.setContentLength(pdfBytes.length);
             
             return ResponseEntity.ok()

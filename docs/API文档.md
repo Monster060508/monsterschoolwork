@@ -178,7 +178,7 @@ Authorization: Bearer {token}
   "username": "sales1",
   "password": "sales123",
   "name": "张三",
-  "role": "SALESPERSON",
+  "role": "SALES",
   "photoUrl": "https://oss.example.com/sales1.jpg"
 }
 ```
@@ -192,7 +192,7 @@ Authorization: Bearer {token}
     "id": 2,
     "username": "sales1",
     "name": "张三",
-    "role": "SALESPERSON",
+    "role": "SALES",
     "photoUrl": "https://oss.example.com/sales1.jpg",
     "createTime": "2024-01-01 10:00:00"
   }
@@ -211,7 +211,7 @@ Authorization: Bearer {token}
 ```json
 {
   "name": "张三（已更新）",
-  "role": "SALESPERSON",
+  "role": "SALES",
   "photoUrl": "https://oss.example.com/sales1_updated.jpg"
 }
 ```
@@ -225,7 +225,7 @@ Authorization: Bearer {token}
     "id": 2,
     "username": "sales1",
     "name": "张三（已更新）",
-    "role": "SALESPERSON",
+    "role": "SALES",
     "photoUrl": "https://oss.example.com/sales1_updated.jpg",
     "updateTime": "2024-01-01 12:00:00"
   }

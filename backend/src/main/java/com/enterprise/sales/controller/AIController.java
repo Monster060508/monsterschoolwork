@@ -3,13 +3,18 @@ package com.enterprise.sales.controller;
 import com.enterprise.sales.service.AIService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/ai")
 @RequiredArgsConstructor
@@ -27,6 +32,96 @@ public class AIController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(createResponse(400, e.getMessage(), null));
         }
+    }
+    
+    @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter chatStream(@RequestBody ChatRequest request) {
+        String conversationId = request.getConversationId();
+        if (conversationId == null || conversationId.isEmpty()) {
+            conversationId = UUID.randomUUID().toString();
+        }
+        
+        SseEmitter emitter = new SseEmitter(60000L); // 60秒超时
+        
+        // 异步处理流式输出
+        String finalConversationId = conversationId;
+        new Thread(() -> {
+            try {
+                // 发送对话ID
+                emitter.send(SseEmitter.event()
+                        .name("conversationId")
+                        .data(finalConversationId));
+                
+                // 调用流式聊天服务
+                aiService.chatStream(request.getQuestion(), finalConversationId, new AIService.StreamCallback() {
+                    @Override
+                    public void onToken(String token) {
+                        try {
+                            emitter.send(SseEmitter.event()
+                                    .name("token")
+                                    .data(token));
+                        } catch (Exception e) {
+                            log.error("发送token失败", e);
+                        }
+                    }
+                    
+                    @Override
+                    public void onComplete(String fullResponse, Map<String, Object> metadata) {
+                        try {
+                            // 发送完成事件
+                            Map<String, Object> completeData = new HashMap<>();
+                            completeData.put("fullResponse", fullResponse);
+                            completeData.putAll(metadata);
+                            
+                            emitter.send(SseEmitter.event()
+                                    .name("complete")
+                                    .data(completeData));
+                            
+                            emitter.complete();
+                        } catch (Exception e) {
+                            log.error("发送完成事件失败", e);
+                            emitter.completeWithError(e);
+                        }
+                    }
+                    
+                    @Override
+                    public void onError(String error) {
+                        try {
+                            emitter.send(SseEmitter.event()
+                                    .name("error")
+                                    .data(error));
+                            emitter.completeWithError(new RuntimeException(error));
+                        } catch (Exception e) {
+                            log.error("发送错误事件失败", e);
+                            emitter.completeWithError(e);
+                        }
+                    }
+                });
+                
+            } catch (Exception e) {
+                log.error("流式聊天处理失败", e);
+                try {
+                    emitter.send(SseEmitter.event()
+                            .name("error")
+                            .data("处理失败: " + e.getMessage()));
+                    emitter.completeWithError(e);
+                } catch (Exception ex) {
+                    emitter.completeWithError(ex);
+                }
+            }
+        }).start();
+        
+        // 设置超时和错误回调
+        emitter.onTimeout(() -> {
+            log.warn("SSE连接超时，conversationId: {}", finalConversationId);
+            emitter.complete();
+        });
+        
+        emitter.onError(e -> {
+            log.error("SSE连接错误，conversationId: {}", finalConversationId, e);
+        });
+        
+        return emitter;
     }
     
     @GetMapping("/conversation/{conversationId}")
@@ -59,6 +154,18 @@ public class AIController {
         List<String> intents = aiService.getSupportedIntents();
         
         return ResponseEntity.ok(createResponse(200, "获取成功", intents));
+    }
+    
+    @GetMapping("/conversations")
+    public ResponseEntity<?> getConversations() {
+        try {
+            // 获取所有对话历史列表
+            List<Map<String, Object>> conversations = aiService.getConversations();
+            
+            return ResponseEntity.ok(createResponse(200, "获取成功", conversations));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(createResponse(400, e.getMessage(), null));
+        }
     }
     
     @PostMapping("/analyze")

@@ -4,8 +4,8 @@ import com.baomidou.mybatisplus.annotation.EnumValue;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum UserRole {
-    ADMIN("admin", "管理员"),
-    SALESPERSON("salesperson", "销售");
+    ADMIN("ADMIN", "管理员"),
+    SALES("SALES", "销售");
     
     @EnumValue
     private final String code;

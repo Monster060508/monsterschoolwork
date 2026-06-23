@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface ProductMapper extends BaseMapper<Product> {
@@ -34,4 +35,10 @@ public interface ProductMapper extends BaseMapper<Product> {
      */
     @Select("SELECT * FROM product WHERE price BETWEEN #{minPrice} AND #{maxPrice} AND deleted = 0")
     List<Product> findByPriceRange(@Param("minPrice") double minPrice, @Param("maxPrice") double maxPrice);
+    
+    /**
+     * 统计商品销量
+     */
+    @Select("SELECT p.id, p.name, COALESCE(SUM(oi.quantity), 0) as sales_quantity, COALESCE(SUM(oi.quantity * oi.unit_price), 0) as sales_amount FROM product p LEFT JOIN order_item oi ON p.id = oi.product_id LEFT JOIN orders o ON oi.order_id = o.id AND o.status = 'COMPLETED' WHERE p.deleted = 0 GROUP BY p.id, p.name ORDER BY sales_quantity DESC")
+    List<Map<String, Object>> countByProduct();
 }

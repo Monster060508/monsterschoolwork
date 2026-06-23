@@ -2,14 +2,14 @@
 USE sales_management;
 
 -- 插入管理员用户（密码：admin123，BCrypt加密）
-INSERT INTO sys_user (username, password, role, name, photo_url) VALUES
-('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', 'ADMIN', '系统管理员', 'https://oss-cn-hangzhou.aliyuncs.com/monster060508/user/admin.jpg');
+INSERT INTO sys_user (username, password, role, name, phone, email, photo_url, status) VALUES
+('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', 'ADMIN', '系统管理员', '13800138000', 'admin@company.com', 'https://oss-cn-hangzhou.aliyuncs.com/monster060508/user/admin.jpg', 1);
 
 -- 插入销售用户（密码：sales123，BCrypt加密）
-INSERT INTO sys_user (username, password, role, name, photo_url) VALUES
-('sales1', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', 'SALESPERSON', '张三', 'https://oss-cn-hangzhou.aliyuncs.com/monster060508/user/sales1.jpg'),
-('sales2', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', 'SALESPERSON', '李四', 'https://oss-cn-hangzhou.aliyuncs.com/monster060508/user/sales2.jpg'),
-('sales3', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', 'SALESPERSON', '王五', 'https://oss-cn-hangzhou.aliyuncs.com/monster060508/user/sales3.jpg');
+INSERT INTO sys_user (username, password, role, name, phone, email, photo_url, status) VALUES
+('sales001', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', 'SALES', '张三', '13800138001', 'zhangsan@company.com', 'https://oss-cn-hangzhou.aliyuncs.com/monster060508/user/sales1.jpg', 1),
+('sales002', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', 'SALES', '李四', '13800138002', 'lisi@company.com', 'https://oss-cn-hangzhou.aliyuncs.com/monster060508/user/sales2.jpg', 1),
+('sales003', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', 'SALES', '王五', '13800138003', 'wangwu@company.com', 'https://oss-cn-hangzhou.aliyuncs.com/monster060508/user/sales3.jpg', 1);
 
 -- 插入商品数据
 INSERT INTO product (name, description, price, stock_quantity, image_url) VALUES
@@ -192,7 +192,7 @@ INSERT INTO data_dictionary (dict_type, dict_code, dict_value, sort_order) VALUE
 ('order_status', 'CANCELLED', '已取消', 4),
 -- 用户角色
 ('user_role', 'ADMIN', '管理员', 1),
-('user_role', 'SALESPERSON', '销售', 2),
+('user_role', 'SALES', '销售', 2),
 -- 文件类型
 ('file_type', 'image', '图片', 1),
 ('file_type', 'document', '文档', 2),

@@ -3,6 +3,7 @@ package com.enterprise.sales.controller;
 import com.enterprise.sales.entity.Order;
 import com.enterprise.sales.enums.OrderStatus;
 import com.enterprise.sales.service.OrderService;
+import com.enterprise.sales.service.PDFService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -20,6 +21,7 @@ import java.util.Map;
 public class OrderController {
     
     private final OrderService orderService;
+    private final PDFService pdfService;
     
     @GetMapping
     public ResponseEntity<?> getOrders(
@@ -110,11 +112,16 @@ public class OrderController {
     @GetMapping("/{id}/export-pdf")
     public ResponseEntity<byte[]> exportOrderPdf(@PathVariable Long id) {
         try {
-            byte[] pdfBytes = orderService.generateOrderPdf(id);
+            Order order = orderService.getById(id);
+            if (order == null) {
+                return ResponseEntity.badRequest().body(null);
+            }
+            
+            byte[] pdfBytes = pdfService.generateOrderPdf(order);
             
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDispositionFormData("attachment", "订单_" + id + ".pdf");
+            headers.setContentDispositionFormData("attachment", "订单_" + id + ".docx");
             headers.setContentLength(pdfBytes.length);
             
             return ResponseEntity.ok()

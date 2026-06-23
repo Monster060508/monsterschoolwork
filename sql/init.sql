@@ -9,9 +9,12 @@ CREATE TABLE IF NOT EXISTS sys_user (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '用户ID',
     username VARCHAR(50) NOT NULL UNIQUE COMMENT '用户名',
     password VARCHAR(100) NOT NULL COMMENT '密码',
-    role VARCHAR(20) NOT NULL COMMENT '角色(ADMIN/SALESPERSON)',
+    role VARCHAR(20) NOT NULL COMMENT '角色(ADMIN/SALES)',
     name VARCHAR(50) NOT NULL COMMENT '姓名',
+    phone VARCHAR(20) COMMENT '手机号',
+    email VARCHAR(100) COMMENT '邮箱',
     photo_url VARCHAR(500) COMMENT '照片URL',
+    status INT DEFAULT 1 COMMENT '状态(0:禁用,1:启用)',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     deleted INT DEFAULT 0 COMMENT '逻辑删除(0:未删除,1:已删除)',
@@ -325,7 +328,7 @@ SELECT
     AVG(o.total_amount) AS avg_order_amount
 FROM sys_user u
 LEFT JOIN orders o ON u.id = o.salesperson_id AND o.status = 'COMPLETED'
-WHERE u.role = 'SALESPERSON' AND u.deleted = 0
+WHERE u.role = 'SALES' AND u.deleted = 0
 GROUP BY u.id, u.name, u.photo_url
 ORDER BY total_sales DESC;
 
@@ -389,7 +392,7 @@ BEGIN
         COUNT(CASE WHEN DATE(o.create_time) = report_date AND o.status = 'COMPLETED' THEN 1 END)
     FROM sys_user u
     LEFT JOIN orders o ON u.id = o.salesperson_id AND o.deleted = 0
-    WHERE u.role = 'SALESPERSON' AND u.deleted = 0
+    WHERE u.role = 'SALES' AND u.deleted = 0
     GROUP BY u.id;
 END //
 

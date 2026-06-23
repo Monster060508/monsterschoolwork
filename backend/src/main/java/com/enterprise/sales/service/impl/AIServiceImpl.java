@@ -3,6 +3,13 @@ package com.enterprise.sales.service.impl;
 import com.enterprise.sales.entity.MarkdownDocument;
 import com.enterprise.sales.service.AIService;
 import com.enterprise.sales.service.MarkdownDocumentService;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.output.Response;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -10,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Service
@@ -18,6 +26,7 @@ public class AIServiceImpl implements AIService {
     
     private final JdbcTemplate jdbcTemplate;
     private final MarkdownDocumentService markdownDocumentService;
+    private final StreamingChatLanguageModel streamingChatModel;
     
     @Override
     public Map<String, Object> chat(String question, String conversationId) {
@@ -338,5 +347,155 @@ public class AIServiceImpl implements AIService {
     
     private String generateDefaultSQL(String question) {
         return "SELECT '暂不支持此类查询' as message";
+    }
+    
+    @Override
+    public List<Map<String, Object>> getConversations() {
+        // 获取所有对话历史列表（按对话ID分组）
+        String sql = "SELECT conversation_id, MAX(create_time) as last_message_time, " +
+                     "COUNT(*) as message_count, " +
+                     "SUBSTRING_INDEX(GROUP_CONCAT(content ORDER BY create_time DESC), ',', 1) as last_message " +
+                     "FROM conversation_history " +
+                     "GROUP BY conversation_id " +
+                     "ORDER BY last_message_time DESC";
+        
+        return jdbcTemplate.queryForList(sql);
+    }
+    
+    @Override
+    public void chatStream(String question, String conversationId, StreamCallback callback) {
+        log.info("收到流式问答请求，问题：{}，对话ID：{}", question, conversationId);
+        
+        try {
+            // 1. 意图分析
+            String intent = analyzeIntent(question);
+            
+            // 2. 获取对话历史
+            List<ChatMessage> messages = buildChatMessages(conversationId, question, intent);
+            
+            // 3. 保存用户消息
+            saveConversationHistory(conversationId, "user", question, intent);
+            
+            // 4. 流式调用大模型
+            AtomicReference<StringBuilder> fullResponse = new AtomicReference<>(new StringBuilder());
+            
+            // 使用langchain4j 0.25.0的流式API
+            streamingChatModel.generate(messages, new StreamingResponseHandler<AiMessage>() {
+                @Override
+                public void onNext(String token) {
+                    fullResponse.get().append(token);
+                    callback.onToken(token);
+                }
+                
+                @Override
+                public void onComplete(Response<AiMessage> response) {
+                    String answer = fullResponse.toString();
+                    
+                    // 保存助手回复
+                    saveConversationHistory(conversationId, "assistant", answer, intent);
+                    
+                    // 构建元数据
+                    Map<String, Object> metadata = new HashMap<>();
+                    metadata.put("intent", intent);
+                    metadata.put("conversationId", conversationId);
+                    metadata.put("timestamp", System.currentTimeMillis());
+                    
+                    // 如果是SQL意图，附加SQL和数据信息
+                    if (isSQLIntent(intent)) {
+                        String sql = generateSQL(question);
+                        List<Map<String, Object>> data = executeSQL(sql);
+                        metadata.put("sql", sql);
+                        metadata.put("data", data);
+                        metadata.put("path", "SQL");
+                    } else if (isRAGIntent(intent)) {
+                        List<Map<String, Object>> documents = searchDocuments(question, 5);
+                        metadata.put("documents", documents);
+                        metadata.put("path", "RAG");
+                    } else {
+                        metadata.put("path", "GENERAL");
+                    }
+                    
+                    callback.onComplete(answer, metadata);
+                }
+                
+                @Override
+                public void onError(Throwable error) {
+                    log.error("流式聊天失败", error);
+                    callback.onError("抱歉，处理您的问题时出现错误：" + error.getMessage());
+                }
+            });
+            
+        } catch (Exception e) {
+            log.error("流式聊天初始化失败", e);
+            callback.onError("抱歉，处理您的问题时出现错误：" + e.getMessage());
+        }
+    }
+    
+    /**
+     * 构建聊天消息列表
+     */
+    private List<ChatMessage> buildChatMessages(String conversationId, String question, String intent) {
+        List<ChatMessage> messages = new ArrayList<>();
+        
+        // 系统提示词
+        String systemPrompt = buildSystemPrompt(intent);
+        messages.add(new SystemMessage(systemPrompt));
+        
+        // 获取历史对话（最近10轮）
+        List<Map<String, Object>> history = getConversationHistory(conversationId);
+        int start = Math.max(0, history.size() - 20); // 最近20条消息（10轮对话）
+        
+        for (int i = start; i < history.size(); i++) {
+            Map<String, Object> msg = history.get(i);
+            String role = msg.get("role").toString();
+            String content = msg.get("content").toString();
+            
+            if ("user".equals(role)) {
+                messages.add(new UserMessage(content));
+            } else if ("assistant".equals(role)) {
+                messages.add(new AiMessage(content));
+            }
+        }
+        
+        // 当前问题
+        messages.add(new UserMessage(question));
+        
+        return messages;
+    }
+    
+    /**
+     * 构建系统提示词
+     */
+    private String buildSystemPrompt(String intent) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("你是企业销售管理系统的智能助手，专门帮助用户分析销售数据、查询订单信息、管理商品库存等。\n\n");
+        prompt.append("你的能力包括：\n");
+        prompt.append("1. 销售数据查询和分析\n");
+        prompt.append("2. 商品信息查询和库存管理\n");
+        prompt.append("3. 订单状态查询和统计\n");
+        prompt.append("4. 员工信息查询\n");
+        prompt.append("5. 数据趋势分析和对比\n\n");
+        
+        switch (intent) {
+            case "sales_query":
+                prompt.append("当前用户正在查询销售数据，请提供详细的销售分析，包括销售额、订单数量、销售人员业绩等信息。");
+                break;
+            case "product_query":
+                prompt.append("当前用户正在查询商品信息，请提供商品库存、销量、价格等相关信息。");
+                break;
+            case "order_query":
+                prompt.append("当前用户正在查询订单信息，请提供订单状态、金额、客户信息等相关数据。");
+                break;
+            case "employee_query":
+                prompt.append("当前用户正在查询员工信息，请提供员工的基本信息和业绩数据。");
+                break;
+            case "statistics":
+                prompt.append("当前用户需要统计数据，请提供详细的统计分析和数据汇总。");
+                break;
+            default:
+                prompt.append("请根据用户的问题提供专业、准确的回答。如果涉及数据查询，请说明可以查询哪些数据。");
+        }
+        
+        return prompt.toString();
     }
 }
