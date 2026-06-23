@@ -2,6 +2,7 @@ package com.enterprise.sales.controller;
 
 import com.enterprise.sales.entity.User;
 import com.enterprise.sales.service.UserService;
+import com.enterprise.sales.util.JwtUtil;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +22,7 @@ public class AuthController {
     
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
+    private final JwtUtil jwtUtil;
     
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
@@ -39,8 +41,8 @@ public class AuthController {
                 return ResponseEntity.badRequest().body(createResponse(400, "用户不存在", null));
             }
             
-            // 生成JWT Token（这里简化处理，实际应该使用JWT工具类）
-            String token = "jwt-token-" + System.currentTimeMillis();
+            // 生成真正的JWT Token
+            String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole().name());
             
             // 构建响应数据
             Map<String, Object> data = new HashMap<>();
@@ -71,29 +73,41 @@ public class AuthController {
     }
     
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser() {
-        // 获取当前认证用户
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(401).body(createResponse(401, "未认证", null));
+    public ResponseEntity<?> getCurrentUser(@RequestHeader(value = "Authorization", required = false) String authorization) {
+        try {
+            // 从请求头中获取JWT Token
+            if (authorization == null || !authorization.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body(createResponse(401, "未提供认证令牌", null));
+            }
+            
+            String token = authorization.substring(7);
+            
+            // 验证Token
+            if (!jwtUtil.validateToken(token)) {
+                return ResponseEntity.status(401).body(createResponse(401, "无效的认证令牌", null));
+            }
+            
+            // 从Token中获取用户名
+            String username = jwtUtil.getUsernameFromToken(token);
+            User user = userService.findByUsername(username);
+            
+            if (user == null) {
+                return ResponseEntity.status(404).body(createResponse(404, "用户不存在", null));
+            }
+            
+            // 构建用户信息
+            Map<String, Object> userInfo = new HashMap<>();
+            userInfo.put("id", user.getId());
+            userInfo.put("username", user.getUsername());
+            userInfo.put("name", user.getName());
+            userInfo.put("role", user.getRole().getDescription());
+            userInfo.put("photoUrl", user.getPhotoUrl());
+            
+            return ResponseEntity.ok(createResponse(200, "获取成功", userInfo));
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body(createResponse(401, "认证失败: " + e.getMessage(), null));
         }
-        
-        String username = authentication.getName();
-        User user = userService.findByUsername(username);
-        
-        if (user == null) {
-            return ResponseEntity.status(404).body(createResponse(404, "用户不存在", null));
-        }
-        
-        // 构建用户信息
-        Map<String, Object> userInfo = new HashMap<>();
-        userInfo.put("id", user.getId());
-        userInfo.put("username", user.getUsername());
-        userInfo.put("name", user.getName());
-        userInfo.put("role", user.getRole().getDescription());
-        userInfo.put("photoUrl", user.getPhotoUrl());
-        
-        return ResponseEntity.ok(createResponse(200, "获取成功", userInfo));
     }
     
     private Map<String, Object> createResponse(int code, String message, Object data) {

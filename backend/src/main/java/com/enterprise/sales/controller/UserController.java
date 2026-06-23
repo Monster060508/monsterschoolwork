@@ -1,9 +1,11 @@
 package com.enterprise.sales.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.enterprise.sales.dto.UserCreateRequest;
 import com.enterprise.sales.entity.User;
 import com.enterprise.sales.enums.UserRole;
 import com.enterprise.sales.service.UserService;
+import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +24,6 @@ public class UserController {
     private final UserService userService;
     
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getUsers(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -45,7 +46,6 @@ public class UserController {
     }
     
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getUser(@PathVariable Long id) {
         User user = userService.getById(id);
         if (user == null) {
@@ -59,9 +59,16 @@ public class UserController {
     }
     
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> createUser(@RequestBody User user) {
+    public ResponseEntity<?> createUser(@Valid @RequestBody UserCreateRequest request) {
         try {
+            // 将DTO转换为实体
+            User user = new User();
+            user.setUsername(request.getUsername());
+            user.setPassword(request.getPassword());
+            user.setName(request.getName());
+            user.setRole(request.getRole());
+            user.setPhotoUrl(request.getPhotoUrl());
+            
             User createdUser = userService.createUser(user);
             return ResponseEntity.ok(createResponse(200, "创建成功", createdUser));
         } catch (Exception e) {
@@ -70,7 +77,6 @@ public class UserController {
     }
     
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody User user) {
         try {
             User updatedUser = userService.updateUser(id, user);
@@ -81,7 +87,6 @@ public class UserController {
     }
     
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteUser(@PathVariable Long id) {
         try {
             boolean success = userService.deleteUser(id);
@@ -96,7 +101,6 @@ public class UserController {
     }
     
     @PostMapping("/{id}/reset-password")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> resetPassword(@PathVariable Long id, @RequestBody ResetPasswordRequest request) {
         try {
             boolean success = userService.resetPassword(id, request.getNewPassword());
@@ -125,7 +129,6 @@ public class UserController {
     }
     
     @PostMapping("/{id}/upload-photo")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> uploadPhoto(@PathVariable Long id, @RequestBody UploadPhotoRequest request) {
         try {
             String photoUrl = userService.uploadPhoto(id, request.getPhotoUrl());

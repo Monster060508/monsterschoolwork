@@ -1,0 +1,1010 @@
+﻿python : C:\anaconda3\Lib\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.5.0) or chardet
+ (7.4.3)/charset_normalizer (3.3.2) doesn't match a supported version!
+所在位置 行:1 字符: 244
++ ... :\Users\32592\Desktop\企业销售管理系统" ; python test_all_api.py 2>&1 | Out-F ...
++                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (C:\anaconda3\Li...ported version!:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  warnings.warn(
+
+============================================================
+       һ����֤�ӿڲ���
+============================================================
+
+==================================================
+����: ����Ա��¼
+����: POST  URL: http://localhost:8080/api/auth/login
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "user": {
+      "photoUrl": null,
+      "role": "����Ա",
+      "name": "ϵͳ����Ա",
+      "id": 1,
+      "username": "admin"
+    },
+    "token": "jwt-token-1782214035283"
+  },
+  "message": "��¼�ɹ�",
+  "timestamp": 1782214035283
+}
+��ȡ��Token: jwt-token-1782214035283
+
+==================================================
+����: ����Ա��¼(����)
+����: POST  URL: http://localhost:8080/api/auth/login
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "user": {
+      "photoUrl": null,
+      "role": "����",
+      "name": "����",
+      "id": 2,
+      "username": "sales001"
+    },
+    "token": "jwt-token-1782214035757"
+  },
+  "message": "��¼�ɹ�",
+  "timestamp": 1782214035757
+}
+
+==================================================
+����: ���������¼
+����: POST  URL: http://localhost:8080/api/auth/login
+״̬��: [91m400[0m
+��Ӧ:
+{
+  "code": 401,
+  "data": null,
+  "message": "�û������������",
+  "timestamp": 1782214036185
+}
+
+==================================================
+����: ��ȡ��ǰ�û���Ϣ
+����: GET  URL: http://localhost:8080/api/auth/me
+״̬��: [91m404[0m
+��Ӧ:
+{
+  "code": 404,
+  "data": null,
+  "message": "�û�������",
+  "timestamp": 1782214036231
+}
+
+============================================================
+       �����û�����ӿڲ���
+============================================================
+
+==================================================
+����: ��ȡ�û��б�
+����: GET  URL: http://localhost:8080/api/users
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "total": 7,
+    "current": 1,
+    "pages": 1,
+    "size": 10,
+    "records": [
+      {
+        "id": 7,
+        "username": "testuser",
+        "password": "$2a$10$/5bhYaDRkqW1USMJZSdZa.yDW2dwFjd7NB2K4mvkqwLelJsaB0jkW",
+        "role": "����",
+        "name": "�����û�-�Ѹ���",
+        "phone": "13900139000",
+        "email": "test@company.com",
+        "photoUrl": null,
+        "status": 1,
+        "createTime": "2026-06-23T19:25:50",
+        "updateTime": "2026-06-23T19...
+
+==================================================
+����: ��ȡ�����û�(ID=1)
+����: GET  URL: http://localhost:8080/api/users/1
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "id": 1,
+    "username": "admin",
+    "password": null,
+    "role": "����Ա",
+    "name": "ϵͳ����Ա",
+    "phone": "13800138000",
+    "email": "admin@company.com",
+    "photoUrl": null,
+    "status": 1,
+    "createTime": "2026-06-23T19:02:21",
+    "updateTime": "2026-06-23T19:02:21",
+    "deleted": 0
+  },
+  "message": "��ȡ�ɹ�",
+  "timestamp": 1782214036328
+}
+
+==================================================
+����: �������û�
+����: POST  URL: http://localhost:8080/api/users
+״̬��: [91m400[0m
+��Ӧ:
+{
+  "code": 400,
+  "data": null,
+  "message": "�û����Ѵ���",
+  "timestamp": 1782214036419
+}
+
+============================================================
+       ������Ʒ����ӿڲ���
+============================================================
+
+==================================================
+����: ��ȡ��Ʒ�б�(��ҳ)
+����: GET  URL: http://localhost:8080/api/products?page=1&size=5
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "total": 17,
+    "current": 1,
+    "pages": 4,
+    "size": 5,
+    "records": [
+      {
+        "id": 17,
+        "name": "������Ʒ",
+        "description": "����һ��������Ʒ",
+        "price": 99.99,
+        "stockQuantity": 100,
+        "imageUrl": null,
+        "createTime": "2026-06-23T19:25:51",
+        "updateTime": "2026-06-23T19:25:51",
+        "deleted": 0
+      },
+      {
+        "id": 16,
+        "name": "������Ʒ",
+        "description": "����һ��������Ʒ",
+        "price": 9...
+
+==================================================
+����: ��ȡ������Ʒ(ID=1)
+����: GET  URL: http://localhost:8080/api/products/1
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "id": 1,
+    "name": "iPhone 15 Pro",
+    "description": "ƻ�������콢�ֻ���A17 ProоƬ���ѽ������",
+    "price": 8999.0,
+    "stockQuantity": 90,
+    "imageUrl": "https://example.com/iphone15pro.jpg",
+    "createTime": "2026-06-23T19:01:47",
+    "updateTime": "2026-06-23T19:01:48",
+    "deleted": 0
+  },
+  "message": "��ȡ�ɹ�",
+  "timestamp": 1782214036524
+}
+
+==================================================
+����: ������Ʒ(�ؼ���:iPhone)
+����: GET  URL: http://localhost:8080/api/products/search?keyword=iPhone
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": [
+    {
+      "id": 1,
+      "name": "iPhone 15 Pro",
+      "description": "ƻ�������콢�ֻ���A17 ProоƬ���ѽ������",
+      "price": 8999.0,
+      "stockQuantity": 90,
+      "imageUrl": "https://example.com/iphone15pro.jpg",
+      "createTime": "2026-06-23T19:01:47",
+      "updateTime": "2026-06-23T19:01:48",
+      "deleted": 0
+    }
+  ],
+  "message": "�����ɹ�",
+  "timestamp": 1782214036572
+}
+
+==================================================
+����: ��ȡ������ƷTOP5
+����: GET  URL: http://localhost:8080/api/products/hot?limit=5
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": [
+    {
+      "id": 3,
+      "name": "AirPods Pro 2",
+      "description": "�������룬����Ӧ��Ƶ��USB-C���",
+      "price": 1899.0,
+      "stockQuantity": 190,
+      "imageUrl": "https://example.com/airpodspro2.jpg",
+      "createTime": "2026-06-23T19:01:47",
+      "updateTime": "2026-06-23T19:01:48",
+      "deleted": 0
+    },
+    {
+      "id": 1,
+      "name": "iPhone 15 Pro",
+      "description": "ƻ�������콢�ֻ���A17 ProоƬ���ѽ������",
+      "price": 8999.0,
+      "stockQuantity": 90,
+     ...
+
+==================================================
+����: ��ȡ�Ϳ����Ʒ
+����: GET  URL: http://localhost:8080/api/products/low-stock?threshold=20
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": [],
+  "message": "��ȡ�ɹ�",
+  "timestamp": 1782214036664
+}
+
+==================================================
+����: �۸������ѯ(5000-10000)
+����: GET  URL: http://localhost:8080/api/products/price-range?minPrice=5000&maxPrice=10000
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": [
+    {
+      "id": 4,
+      "name": "iPad Air 5",
+      "description": "M1оƬ��10.9Ӣ�磬256GB",
+      "price": 5499.0,
+      "stockQuantity": 75,
+      "imageUrl": "https://example.com/ipadair5.jpg",
+      "createTime": "2026-06-23T19:01:47",
+      "updateTime": "2026-06-23T19:01:48",
+      "deleted": 0
+    },
+    {
+      "id": 7,
+      "name": "��Ϊ Mate 60 Pro",
+      "description": "����9000S������ͨ����XMAGEӰ��",
+      "price": 6999.0,
+      "stockQuantity": 86,
+      "imageUrl"...
+
+==================================================
+����: ��������Ʒ
+����: POST  URL: http://localhost:8080/api/products
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "id": 18,
+    "name": "������Ʒ",
+    "description": "����һ��������Ʒ",
+    "price": 99.99,
+    "stockQuantity": 100,
+    "imageUrl": null,
+    "createTime": "2026-06-23T19:27:16.7383896",
+    "updateTime": "2026-06-23T19:27:16.7383896",
+    "deleted": 0
+  },
+  "message": "�����ɹ�",
+  "timestamp": 1782214036819
+}
+
+==================================================
+����: ������Ʒ��Ϣ
+����: PUT  URL: http://localhost:8080/api/products/13
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "id": 13,
+    "name": "������Ʒ-�Ѹ���",
+    "description": "����һ��������Ʒ",
+    "price": 199.99,
+    "stockQuantity": 100,
+    "imageUrl": null,
+    "createTime": "2026-06-23T19:21:17",
+    "updateTime": "2026-06-23T19:27:16.8903714",
+    "deleted": 0
+  },
+  "message": "���³ɹ�",
+  "timestamp": 1782214036973
+}
+
+============================================================
+       �ġ���������ӿڲ���
+============================================================
+
+==================================================
+����: ��ȡ�����б�(��ҳ)
+����: GET  URL: http://localhost:8080/api/orders?page=1&size=5
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "total": 21,
+    "current": 1,
+    "pages": 5,
+    "size": 5,
+    "records": [
+      {
+        "id": 27,
+        "orderNo": "ORD202606233A6C",
+        "customerName": "ȡ�����Կͻ�",
+        "totalAmount": 3299.0,
+        "status": "��ȡ��",
+        "salespersonId": 3,
+        "createTime": "2026-06-23T19:25:52",
+        "updateTime": "2026-06-23T19:25:52",
+        "deleted": 0,
+        "salesperson": null
+      },
+      {
+        "id": 26,
+        "orderNo": "ORD20260623...
+
+==================================================
+����: ��ȡ��������(ID=1)
+����: GET  URL: http://localhost:8080/api/orders/1
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "id": 1,
+    "orderNo": "ORD20260601001",
+    "customerName": "�����Ƽ����޹�˾",
+    "totalAmount": 89990.0,
+    "status": null,
+    "salespersonId": 2,
+    "createTime": "2026-06-23T19:01:48",
+    "updateTime": "2026-06-23T19:01:48",
+    "deleted": 0,
+    "salesperson": null
+  },
+  "message": "��ȡ�ɹ�",
+  "timestamp": 1782214037067
+}
+
+==================================================
+����: ��״̬ɸѡ(COMPLETED)
+����: GET  URL: http://localhost:8080/api/orders?status=COMPLETED
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "total": 8,
+    "current": 1,
+    "pages": 1,
+    "size": 10,
+    "records": [
+      {
+        "id": 1,
+        "orderNo": "ORD20260601001",
+        "customerName": "�����Ƽ����޹�˾",
+        "totalAmount": 89990.0,
+        "status": null,
+        "salespersonId": 2,
+        "createTime": "2026-06-23T19:01:48",
+        "updateTime": "2026-06-23T19:01:48",
+        "deleted": 0,
+        "salesperson": null
+      },
+      {
+        "id": 2,
+        "orderNo": "ORD202606010...
+
+==================================================
+����: ��������Աɸѡ(ID=2)
+����: GET  URL: http://localhost:8080/api/orders?salespersonId=2
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "total": 7,
+    "current": 1,
+    "pages": 1,
+    "size": 10,
+    "records": [
+      {
+        "id": 26,
+        "orderNo": "ORD2026062389D4",
+        "customerName": "���Կͻ����޹�˾",
+        "totalAmount": 27493.0,
+        "status": "������",
+        "salespersonId": 2,
+        "createTime": "2026-06-23T19:25:51",
+        "updateTime": "2026-06-23T19:25:51",
+        "deleted": 0,
+        "salesperson": null
+      },
+      {
+        "id": 24,
+        "orderNo": "ORD20260...
+
+==================================================
+����: ��ȡ����״̬ͳ��
+����: GET  URL: http://localhost:8080/api/orders/status-count
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "IN_PROGRESS": 3,
+    "CANCELLED": 2,
+    "COMPLETED": 8,
+    "PENDING": 8
+  },
+  "message": "��ȡ�ɹ�",
+  "timestamp": 1782214037198
+}
+
+==================================================
+����: �����¶���
+����: POST  URL: http://localhost:8080/api/orders
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "id": 28,
+    "orderNo": "ORD2026062372AC",
+    "customerName": "���Կͻ����޹�˾",
+    "totalAmount": 27493.0,
+    "status": "������",
+    "salespersonId": 2,
+    "createTime": "2026-06-23T19:27:17.2221861",
+    "updateTime": "2026-06-23T19:27:17.2221861",
+    "deleted": 0,
+    "salesperson": null
+  },
+  "message": "�����ɹ�",
+  "timestamp": 1782214037442
+}
+�����Ķ���ID: 28
+
+==================================================
+����: ���¶���״̬Ϊ������
+����: PUT  URL: http://localhost:8080/api/orders/28/status
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": null,
+  "message": "״̬���³ɹ�",
+  "timestamp": 1782214037592
+}
+
+==================================================
+����: ��ɶ���
+����: POST  URL: http://localhost:8080/api/orders/28/complete
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": null,
+  "message": "�������",
+  "timestamp": 1782214037897
+}
+
+==================================================
+����: ������ȡ������
+����: POST  URL: http://localhost:8080/api/orders
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "id": 29,
+    "orderNo": "ORD20260623D822",
+    "customerName": "ȡ�����Կͻ�",
+    "totalAmount": 3299.0,
+    "status": "������",
+    "salespersonId": 3,
+    "createTime": "2026-06-23T19:27:17.9221514",
+    "updateTime": "2026-06-23T19:27:17.9221514",
+    "deleted": 0,
+    "salesperson": null
+  },
+  "message": "�����ɹ�",
+  "timestamp": 1782214038072
+}
+ȡ������ID: 29
+
+==================================================
+����: ȡ������
+����: POST  URL: http://localhost:8080/api/orders/29/cancel
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": null,
+  "message": "����ȡ���ɹ�",
+  "timestamp": 1782214038208
+}
+
+============================================================
+       �塢����/ͳ�ƽӿڲ���
+============================================================
+
+==================================================
+����: ��ȡ����ͳ��
+����: GET  URL: http://localhost:8080/api/overview/statistics
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "cancelledOrders": 3,
+    "dailySales": 350944.0,
+    "completedOrders": 9,
+    "totalSales": 350944.0,
+    "totalOrders": 23,
+    "pendingOrders": 8,
+    "monthlySales": 350944.0,
+    "inProgressOrders": 3
+  },
+  "message": "��ȡ�ɹ�",
+  "timestamp": 1782214038304
+}
+
+==================================================
+����: ��ȡ�������а�
+����: GET  URL: http://localhost:8080/api/overview/sales-ranking
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": [],
+  "message": "��ȡ�ɹ�",
+  "timestamp": 1782214038331
+}
+
+==================================================
+����: ��ȡ������Ʒ����
+����: GET  URL: http://localhost:8080/api/overview/hot-products?limit=5
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": [
+    {
+      "sales_quantity": 50,
+      "image_url": "https://example.com/airpodspro2.jpg",
+      "product_id": 3,
+      "sales_amount": 94950.0,
+      "product_name": "AirPods Pro 2"
+    },
+    {
+      "sales_quantity": 43,
+      "image_url": "https://example.com/iphone15pro.jpg",
+      "product_id": 1,
+      "sales_amount": 386957.0,
+      "product_name": "iPhone 15 Pro"
+    },
+    {
+      "sales_quantity": 18,
+      "image_url": "https://example.com/applewatch9.jp...
+
+==================================================
+����: ��ȡ��������(��30��)
+����: GET  URL: http://localhost:8080/api/overview/order-trend?days=30
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": [
+    {
+      "date": "2026-06-23",
+      "order_count": 23,
+      "sales_amount": 933548.0
+    }
+  ],
+  "message": "��ȡ�ɹ�",
+  "timestamp": 1782214038416
+}
+
+============================================================
+       ����AI�����ʴ�ӿڲ���
+============================================================
+
+==================================================
+����: ��ȡ֧�ֵ���ͼ�б�
+����: GET  URL: http://localhost:8080/api/ai/intents
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": [
+    "sales_query",
+    "product_query",
+    "order_query",
+    "employee_query",
+    "statistics",
+    "comparison",
+    "trend",
+    "general"
+  ],
+  "message": "��ȡ�ɹ�",
+  "timestamp": 1782214038442
+}
+
+==================================================
+����: AI����-���۲�ѯ
+����: POST  URL: http://localhost:8080/api/ai/chat
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "path": "SQL",
+    "data": [
+      {
+        "salesperson_name": "����",
+        "total_sales": 133479.0,
+        "order_count": 3
+      },
+      {
+        "salesperson_name": "����",
+        "total_sales": 104991.0,
+        "order_count": 2
+      },
+      {
+        "salesperson_name": "����",
+        "total_sales": 56987.0,
+        "order_count": 2
+      },
+      {
+        "salesperson_name": "����",
+        "total_sales": 32990.0,
+        "order_count": 1
+      },
+    ...
+
+==================================================
+����: AI����-��Ʒ��ѯ
+����: POST  URL: http://localhost:8080/api/ai/chat
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "path": "SQL",
+    "data": [
+      {
+        "name": "������Ʒ",
+        "price": 99.99,
+        "stock_quantity": 100
+      },
+      {
+        "name": "������Ʒ",
+        "price": 99.99,
+        "stock_quantity": 100
+      },
+      {
+        "name": "������Ʒ",
+        "price": 99.99,
+        "stock_quantity": 100
+      },
+      {
+        "name": "������Ʒ",
+        "price": 99.99,
+        "stock_quantity": 100
+      },
+      {
+        "name": "������Ʒ",
+        "price": 99.99,
+  ...
+
+==================================================
+����: AI����-������ѯ
+����: POST  URL: http://localhost:8080/api/ai/chat
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "path": "SQL",
+    "data": [
+      {
+        "order_no": "ORD20260623D822",
+        "customer_name": "ȡ�����Կͻ�",
+        "total_amount": 3299.0,
+        "status": "cancelled",
+        "create_time": "2026-06-23T19:27:18"
+      },
+      {
+        "order_no": "ORD2026062372AC",
+        "customer_name": "���Կͻ����޹�˾",
+        "total_amount": 27493.0,
+        "status": "completed",
+        "create_time": "2026-06-23T19:27:17"
+      },
+      {
+        "order_no": "ORD20260...
+
+==================================================
+����: AI����-Ա����ѯ
+����: POST  URL: http://localhost:8080/api/ai/chat
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "path": "SQL",
+    "data": [
+      {
+        "salesperson_name": "����",
+        "total_sales": 133479.0,
+        "order_count": 3
+      },
+      {
+        "salesperson_name": "����",
+        "total_sales": 104991.0,
+        "order_count": 2
+      },
+      {
+        "salesperson_name": "����",
+        "total_sales": 56987.0,
+        "order_count": 2
+      },
+      {
+        "salesperson_name": "����",
+        "total_sales": 32990.0,
+        "order_count": 1
+      },
+    ...
+
+==================================================
+����: AI����-ͳ�Ʒ���
+����: POST  URL: http://localhost:8080/api/ai/chat
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "path": "SQL",
+    "data": [
+      {
+        "salesperson_name": "����",
+        "total_sales": 133479.0,
+        "order_count": 3
+      },
+      {
+        "salesperson_name": "����",
+        "total_sales": 104991.0,
+        "order_count": 2
+      },
+      {
+        "salesperson_name": "����",
+        "total_sales": 56987.0,
+        "order_count": 2
+      },
+      {
+        "salesperson_name": "����",
+        "total_sales": 32990.0,
+        "order_count": 1
+      },
+    ...
+
+==================================================
+����: ��ȡ�Ի���ʷ�б�
+����: GET  URL: http://localhost:8080/api/ai/conversations
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": [
+    {
+      "conversation_id": "test-conv-002",
+      "last_message_time": "2026-06-23T19:27:19",
+      "message_count": 14,
+      "last_message": "���ݲ�ѯ�������ѯ��18����¼��\n1. name=������Ʒ"
+    },
+    {
+      "conversation_id": "test-conv-003",
+      "last_message_time": "2026-06-23T19:27:19",
+      "message_count": 14,
+      "last_message": "���ݲ�ѯ�������ѯ��20����¼��\n1. order_no=ORD20260623D822"
+    },
+    {
+      "conversation_id": "test-conv-004",
+      "last_message_time": "2026-0...
+
+==================================================
+����: ��ȡ�Ի�����(test-conv-001)
+����: GET  URL: http://localhost:8080/api/ai/conversation/test-conv-001
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": [
+    {
+      "role": "user",
+      "content": "�������������Σ�",
+      "intent": "sales_query",
+      "create_time": "2026-06-23T19:27:18"
+    },
+    {
+      "role": "assistant",
+      "content": "���ݲ�ѯ�������ѯ��5����¼��\n1. salesperson_name=����, total_sales=133479.00, order_count=3\n2. salesperson_name=����, total_sales=104991.00, order_count=2\n3. salesperson_name=����, total_sales=56987.00, order_count=2",
+      "intent": "sales_query",
+      "create_time": "2026-06-23T19:27:18"
+    ...
+
+==================================================
+����: AI��ʽ����(SSE)
+����: POST  URL: http://localhost:8080/api/ai/chat/stream
+״̬��: 200
+[91m����: Response ended prematurely[0m
+
+==================================================
+����: ���ݷ����ӿ�
+����: POST  URL: http://localhost:8080/api/ai/analyze
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "data": [
+      {
+        "product": "iPhone",
+        "sales": 100
+      },
+      {
+        "product": "MacBook",
+        "sales": 50
+      }
+    ],
+    "analysis": "���ݲ�ѯ�������ѯ��2����¼��\n1. product=iPhone, sales=100\n2. product=MacBook, sales=50",
+    "timestamp": 1782214038964
+  },
+  "message": "�����ɹ�",
+  "timestamp": 1782214038964
+}
+
+==================================================
+����: ����Ի���ʷ(test-conv-001)
+����: DELETE  URL: http://localhost:8080/api/ai/conversation/test-conv-001
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": null,
+  "message": "����ɹ�",
+  "timestamp": 1782214038993
+}
+
+============================================================
+       �ߡ��ĵ�����ӿڲ���
+============================================================
+
+==================================================
+����: ��ȡMarkdown�ĵ��б�
+����: GET  URL: http://localhost:8080/api/markdown-documents
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": {
+    "total": 3,
+    "current": 1,
+    "pages": 1,
+    "size": 10,
+    "records": [
+      {
+        "id": 1,
+        "title": "���۹����ƶ�",
+        "fileName": "sales_policy.md",
+        "ossUrl": null,
+        "content": "# ���۹����ƶ�\n\n## һ������\n\nΪ�淶��˾������Ϊ���������Ч�ʣ����ƶ����ƶȡ�\n\n## ��������Ŀ��\n\n1. ÿ������Ŀ�������۾����ƶ�\n2. ������Ա������¶�Ŀ���80%����\n3. �������Ŀ�������⽱��\n\n## �����ͻ�����\n\n1. �ͻ���Ϣ�輰ʱ¼��ϵͳ\n2. ��Ҫ�ͻ��趨�ڻط�\n3. �ͻ�Ͷ������24Сʱ����Ӧ",
+        "fileSize": null,
+        "uploadUserId": 1,
+        "create...
+
+============================================================
+       �ˡ�PDF�����ӿڲ���
+============================================================
+
+==================================================
+����: ��������PDF
+״̬��: 200
+�ļ���С: 2652 bytes
+Content-Type: application/octet-stream
+
+============================================================
+       �š�ɾ������
+============================================================
+
+==================================================
+����: ɾ��������Ʒ
+����: DELETE  URL: http://localhost:8080/api/products/13
+״̬��: [92m200[0m
+��Ӧ:
+{
+  "code": 200,
+  "data": null,
+  "message": "ɾ���ɹ�",
+  "timestamp": 1782214039221
+}
+
+
+============================================================
+                    ���Խ������
+============================================================
+
+
+  [92m����Ա��¼                                    [PASS] 200[0m
+  [92m����Ա��¼(����)                                [PASS] 200[0m
+  [91m���������¼                                   [FAIL] 400[0m
+  [91m��ȡ��ǰ�û���Ϣ                                 [FAIL] 404[0m
+  [92m��ȡ�û��б�                                   [PASS] 200[0m
+  [92m��ȡ�����û�(ID=1)                             [PASS] 200[0m
+  [91m�������û�                                    [FAIL] 400[0m
+  [92m��ȡ��Ʒ�б�(��ҳ)                               [PASS] 200[0m
+  [92m��ȡ������Ʒ(ID=1)                             [PASS] 200[0m
+  [92m������Ʒ(�ؼ���:iPhone)                         [PASS] 200[0m
+  [92m��ȡ������ƷTOP5                               [PASS] 200[0m
+  [92m��ȡ�Ϳ����Ʒ                                  [PASS] 200[0m
+  [92m�۸������ѯ(5000-10000)                       [PASS] 200[0m
+  [92m��������Ʒ                                    [PASS] 200[0m
+  [92m������Ʒ��Ϣ                                   [PASS] 200[0m
+  [92m��ȡ�����б�(��ҳ)                               [PASS] 200[0m
+  [92m��ȡ��������(ID=1)                             [PASS] 200[0m
+  [92m��״̬ɸѡ(COMPLETED)                         [PASS] 200[0m
+  [92m��������Աɸѡ(ID=2)                            [PASS] 200[0m
+  [92m��ȡ����״̬ͳ��                                 [PASS] 200[0m
+  [92m�����¶���                                    [PASS] 200[0m
+  [92m���¶���״̬Ϊ������                               [PASS] 200[0m
+  [92m��ɶ���                                     [PASS] 200[0m
+  [92m������ȡ������                                  [PASS] 200[0m
+  [92mȡ������                                     [PASS] 200[0m
+  [92m��ȡ����ͳ��                                   [PASS] 200[0m
+  [92m��ȡ�������а�                                  [PASS] 200[0m
+  [92m��ȡ������Ʒ����                                 [PASS] 200[0m
+  [92m��ȡ��������(��30��)                             [PASS] 200[0m
+  [92m��ȡ֧�ֵ���ͼ�б�                                [PASS] 200[0m
+  [92mAI����-���۲�ѯ                                [PASS] 200[0m
+  [92mAI����-��Ʒ��ѯ                                [PASS] 200[0m
+  [92mAI����-������ѯ                                [PASS] 200[0m
+  [92mAI����-Ա����ѯ                                [PASS] 200[0m
+  [92mAI����-ͳ�Ʒ���                                [PASS] 200[0m
+  [92m��ȡ�Ի���ʷ�б�                                 [PASS] 200[0m
+  [92m��ȡ�Ի�����(test-conv-001)                    [PASS] 200[0m
+  [91mAI��ʽ����(SSE)                              [FAIL] ERR[0m
+  [92m���ݷ����ӿ�                                   [PASS] 200[0m
+  [92m����Ի���ʷ(test-conv-001)                    [PASS] 200[0m
+  [92m��ȡMarkdown�ĵ��б�                           [PASS] 200[0m
+  [92m��������PDF                                  [PASS] 200[0m
+  [92mɾ��������Ʒ                                   [PASS] 200[0m
+
+  �ܼ�: 43  |  �ɹ�: 39  |  ʧ��: 4
+============================================================

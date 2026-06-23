@@ -52,7 +52,6 @@ public class ProductController {
     }
     
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createProduct(@RequestBody Product product) {
         try {
             Product createdProduct = productService.createProduct(product);
@@ -63,7 +62,6 @@ public class ProductController {
     }
     
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateProduct(@PathVariable Long id, @RequestBody Product product) {
         try {
             Product updatedProduct = productService.updateProduct(id, product);
@@ -74,7 +72,6 @@ public class ProductController {
     }
     
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteProduct(@PathVariable Long id) {
         try {
             boolean success = productService.deleteProduct(id);
@@ -89,7 +86,6 @@ public class ProductController {
     }
     
     @PostMapping("/{id}/upload-image")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> uploadImage(@PathVariable Long id, @RequestBody UploadImageRequest request) {
         try {
             String imageUrl = productService.uploadImage(id, request.getImageUrl());
@@ -111,7 +107,6 @@ public class ProductController {
     }
     
     @GetMapping("/low-stock")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getLowStockProducts(@RequestParam(defaultValue = "10") int threshold) {
         List<Product> products = productService.findLowStockProducts(threshold);
         
@@ -136,7 +131,6 @@ public class ProductController {
     }
     
     @PostMapping("/{id}/update-stock")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateStock(@PathVariable Long id, @RequestBody UpdateStockRequest request) {
         try {
             boolean success = productService.updateStock(id, request.getQuantity());

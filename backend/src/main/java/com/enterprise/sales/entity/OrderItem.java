@@ -25,7 +25,19 @@ public class OrderItem {
     @TableField("unit_price")
     private BigDecimal unitPrice;
     
+    @TableField("subtotal")
+    private BigDecimal subtotal;
+    
     // 关联查询商品信息
     @TableField(exist = false)
     private Product product;
+    
+    /**
+     * 自动计算小计金额
+     */
+    public void calculateSubtotal() {
+        if (unitPrice != null && quantity != null) {
+            this.subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
+        }
+    }
 }

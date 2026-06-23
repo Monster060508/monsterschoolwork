@@ -20,8 +20,15 @@ def init_users():
     conn = mysql.connector.connect(**config)
     cursor = conn.cursor()
     
+    # 禁用外键检查
+    cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+    
     # 清空现有用户
     cursor.execute("DELETE FROM sys_user")
+    cursor.execute("ALTER TABLE sys_user AUTO_INCREMENT = 1")
+    
+    # 启用外键检查
+    cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
     
     # 用户数据
     users = [
@@ -29,6 +36,8 @@ def init_users():
         ('sales001', 'sales123', 'SALES', '张三', '13800138001', 'zhangsan@company.com'),
         ('sales002', 'sales123', 'SALES', '李四', '13800138002', 'lisi@company.com'),
         ('sales003', 'sales123', 'SALES', '王五', '13800138003', 'wangwu@company.com'),
+        ('sales004', 'sales123', 'SALES', '赵六', '13800138004', 'zhaoliu@company.com'),
+        ('sales005', 'sales123', 'SALES', '钱七', '13800138005', 'qianqi@company.com'),
     ]
     
     for username, password, role, name, phone, email in users:

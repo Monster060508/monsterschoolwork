@@ -4,6 +4,7 @@ import com.enterprise.sales.service.AIService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Executor;
 
 @Slf4j
 @RestController
@@ -21,6 +23,9 @@ import java.util.UUID;
 public class AIController {
     
     private final AIService aiService;
+    
+    @Qualifier("sseExecutor")
+    private final Executor sseExecutor;
     
     @PostMapping("/chat")
     public ResponseEntity<?> chat(@RequestBody ChatRequest request) {
@@ -41,11 +46,12 @@ public class AIController {
             conversationId = UUID.randomUUID().toString();
         }
         
-        SseEmitter emitter = new SseEmitter(60000L); // 60秒超时
+        // 增加超时时间到5分钟
+        SseEmitter emitter = new SseEmitter(300000L);
         
         // 异步处理流式输出
         String finalConversationId = conversationId;
-        new Thread(() -> {
+        sseExecutor.execute(() -> {
             try {
                 // 发送对话ID
                 emitter.send(SseEmitter.event()
@@ -109,11 +115,18 @@ public class AIController {
                     emitter.completeWithError(ex);
                 }
             }
-        }).start();
+        });
         
         // 设置超时和错误回调
         emitter.onTimeout(() -> {
             log.warn("SSE连接超时，conversationId: {}", finalConversationId);
+            try {
+                emitter.send(SseEmitter.event()
+                        .name("error")
+                        .data("连接超时"));
+            } catch (Exception e) {
+                log.error("发送超时事件失败", e);
+            }
             emitter.complete();
         });
         

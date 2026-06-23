@@ -37,6 +37,8 @@ public class OrderItemServiceImpl extends ServiceImpl<OrderItemMapper, OrderItem
     @Override
     @Transactional
     public OrderItem createOrderItem(OrderItem orderItem) {
+        // 自动计算小计金额
+        orderItem.calculateSubtotal();
         // 保存订单项
         orderItemMapper.insert(orderItem);
         
@@ -48,6 +50,8 @@ public class OrderItemServiceImpl extends ServiceImpl<OrderItemMapper, OrderItem
     public List<OrderItem> createOrderItems(List<OrderItem> orderItems) {
         // 批量保存订单项
         for (OrderItem orderItem : orderItems) {
+            // 自动计算小计金额
+            orderItem.calculateSubtotal();
             orderItemMapper.insert(orderItem);
         }
         
