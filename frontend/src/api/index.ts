@@ -119,7 +119,6 @@ export const productApi = {
   createProduct: (data: any) => api.post('/products', data),
   updateProduct: (id: number, data: any) => api.put(`/products/${id}`, data),
   deleteProduct: (id: number) => api.delete(`/products/${id}`),
-  updateProductStatus: (id: number, status: number) => api.put(`/products/${id}`, { status }),
   uploadImage: (id: number, data: any) => api.post(`/products/${id}/upload-image`, data),
   searchProducts: (keyword: string) => api.get('/products/search', { params: { keyword } }),
   getLowStockProducts: (threshold?: number) => api.get('/products/low-stock', { params: { threshold } }),
@@ -147,7 +146,12 @@ export const overviewApi = {
   getTopSales: (limit?: number) => api.get('/overview/sales-ranking', { params: { limit } }),
   getSalesRanking: (limit?: number) => api.get('/overview/sales-ranking', { params: { limit } }),
   getHotProducts: (limit?: number) => api.get('/overview/hot-products', { params: { limit } }),
-  getSalesTrend: (period?: string) => api.get('/overview/order-trend', { params: { period } }),
+  getRecentOrders: (limit?: number) => api.get('/overview/recent-orders', { params: { limit } }),
+  getSalesTrend: (period?: string) => {
+    const daysMap: Record<string, number> = { week: 7, month: 30, year: 365 }
+    const days = daysMap[period || 'month'] || 30
+    return api.get('/overview/order-trend', { params: { days } })
+  },
   getOrderTrend: (days?: number) => api.get('/overview/order-trend', { params: { days } }),
   getOrderStatusDistribution: () => api.get('/orders/status-count'),
   printReport: () => api.get('/overview/export-pdf', { responseType: 'blob' }),

@@ -3,6 +3,8 @@ package com.enterprise.sales.controller;
 import com.enterprise.sales.service.OrderService;
 import com.enterprise.sales.service.OrderItemService;
 import com.enterprise.sales.service.PDFService;
+import com.enterprise.sales.service.ProductService;
+import com.enterprise.sales.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -21,6 +23,8 @@ public class OverviewController {
     private final OrderService orderService;
     private final OrderItemService orderItemService;
     private final PDFService pdfService;
+    private final ProductService productService;
+    private final UserService userService;
     
     @GetMapping("/statistics")
     public ResponseEntity<?> getStatistics() {
@@ -38,6 +42,10 @@ public class OverviewController {
         statistics.put("inProgressOrders", statusCount.getOrDefault("IN_PROGRESS", 0L));
         statistics.put("completedOrders", statusCount.getOrDefault("COMPLETED", 0L));
         statistics.put("cancelledOrders", statusCount.getOrDefault("CANCELLED", 0L));
+        
+        // 获取商品和客户数量
+        statistics.put("totalProducts", productService.count());
+        statistics.put("totalCustomers", userService.count());
         
         return ResponseEntity.ok(createResponse(200, "获取成功", statistics));
     }
@@ -64,6 +72,14 @@ public class OverviewController {
         List<Map<String, Object>> orderTrend = orderService.getOrderTrend(days);
         
         return ResponseEntity.ok(createResponse(200, "获取成功", orderTrend));
+    }
+    
+    @GetMapping("/recent-orders")
+    public ResponseEntity<?> getRecentOrders(@RequestParam(defaultValue = "10") int limit) {
+        // 获取最近订单
+        List<Map<String, Object>> recentOrders = orderService.getRecentOrders(limit);
+        
+        return ResponseEntity.ok(createResponse(200, "获取成功", recentOrders));
     }
     
     @GetMapping("/export-pdf")

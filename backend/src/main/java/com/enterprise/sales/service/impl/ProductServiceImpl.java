@@ -75,11 +75,13 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
             throw new RuntimeException("商品不存在");
         }
         
-        // 逻辑删除
-        product.setDeleted(1);
-        product.setUpdateTime(LocalDateTime.now());
+        // 使用自定义SQL直接更新deleted字段，避免@TableLogic导致更新失败
+        int updatedRows = productMapper.markProductDeleted(id);
+        if (updatedRows == 0) {
+            throw new RuntimeException("删除商品失败，数据库更新失败");
+        }
         
-        return updateById(product);
+        return true;
     }
     
     @Override

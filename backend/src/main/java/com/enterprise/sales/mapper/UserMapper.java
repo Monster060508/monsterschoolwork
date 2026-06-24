@@ -5,6 +5,7 @@ import com.enterprise.sales.entity.User;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -26,7 +27,7 @@ public interface UserMapper extends BaseMapper<User> {
     /**
      * 查找销售人员列表
      */
-    @Select("SELECT * FROM sys_user WHERE role = 'SALESPERSON' AND deleted = 0")
+    @Select("SELECT * FROM sys_user WHERE role = 'SALES' AND deleted = 0")
     List<User> findSalespersons();
     
     /**
@@ -34,4 +35,10 @@ public interface UserMapper extends BaseMapper<User> {
      */
     @Select("SELECT role, COUNT(*) as count FROM sys_user WHERE deleted = 0 GROUP BY role")
     List<Object> countByRole();
+    
+    /**
+     * 逻辑删除用户（直接更新deleted字段）
+     */
+    @Update("UPDATE sys_user SET deleted = 1, update_time = NOW() WHERE id = #{id} AND deleted = 0")
+    int markUserDeleted(@Param("id") Long id);
 }

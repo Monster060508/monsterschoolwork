@@ -76,6 +76,11 @@ public interface OrderService extends IService<Order> {
     List<Map<String, Object>> getOrderTrend(int days);
     
     /**
+     * 获取最近订单
+     */
+    List<Map<String, Object>> getRecentOrders(int limit);
+    
+    /**
      * 获取总销售额
      */
     double getTotalSales();

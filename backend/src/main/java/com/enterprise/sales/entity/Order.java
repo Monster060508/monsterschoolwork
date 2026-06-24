@@ -43,4 +43,12 @@ public class Order {
     // 关联查询销售人员信息
     @TableField(exist = false)
     private User salesperson;
+    
+    // 关联查询销售人员名称
+    @TableField(exist = false)
+    private String salespersonName;
+    
+    // 关联查询商品名称
+    @TableField(exist = false)
+    private String productName;
 }

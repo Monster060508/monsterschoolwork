@@ -45,6 +45,6 @@ public class User {
     private LocalDateTime updateTime;
     
     @TableLogic
-    @TableField("deleted")
+    @TableField(value = "deleted", updateStrategy = FieldStrategy.IGNORED)
     private Integer deleted;
 }

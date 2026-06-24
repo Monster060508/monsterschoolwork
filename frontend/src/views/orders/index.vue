@@ -40,11 +40,11 @@
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="orderNo" label="订单编号" width="180" />
       <el-table-column prop="customerName" label="客户名称" />
-      <el-table-column prop="salesName" label="销售人员" />
+      <el-table-column prop="salespersonName" label="销售人员" />
       <el-table-column prop="productName" label="商品名称" />
-      <el-table-column prop="amount" label="订单金额" width="120">
+      <el-table-column prop="totalAmount" label="订单金额" width="120">
         <template #default="{ row }">
-          <span style="color: #f56c6c; font-weight: bold;">¥{{ row.amount?.toFixed(2) }}</span>
+          <span style="color: #f56c6c; font-weight: bold;">¥{{ row.totalAmount?.toFixed(2) }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="status" label="状态" width="100">
@@ -166,19 +166,15 @@
             </div>
             <div class="detail-item">
               <span class="label">销售人员:</span>
-              <span class="value">{{ currentOrder.salesName }}</span>
+              <span class="value">{{ currentOrder.salespersonName }}</span>
             </div>
             <div class="detail-item">
               <span class="label">商品名称:</span>
               <span class="value">{{ currentOrder.productName }}</span>
             </div>
             <div class="detail-item">
-              <span class="label">商品数量:</span>
-              <span class="value">{{ currentOrder.quantity }}</span>
-            </div>
-            <div class="detail-item">
               <span class="label">订单金额:</span>
-              <span class="value" style="color: #f56c6c; font-weight: bold;">¥{{ currentOrder.amount?.toFixed(2) }}</span>
+              <span class="value" style="color: #f56c6c; font-weight: bold;">¥{{ currentOrder.totalAmount?.toFixed(2) }}</span>
             </div>
             <div class="detail-item">
               <span class="label">订单状态:</span>
@@ -401,7 +397,15 @@ const showAddDialog = () => {
 // 显示编辑对话框
 const editOrder = (row: any) => {
   dialogType.value = 'edit'
-  Object.assign(orderForm, row)
+  // 只映射表单需要的字段，避免字段名不匹配
+  orderForm.id = row.id
+  orderForm.customerName = row.customerName
+  orderForm.salesId = row.salespersonId
+  orderForm.productId = row.productId || null
+  orderForm.quantity = row.quantity || 1
+  orderForm.amount = row.totalAmount || 0
+  orderForm.status = row.status
+  orderForm.remark = row.remark || ''
   dialogVisible.value = true
 }
 
@@ -483,9 +487,24 @@ const handleSubmit = async () => {
     
     let response
     if (dialogType.value === 'add') {
-      response = await orderApi.createOrder(orderForm)
+      // 构造后端期望的请求格式
+      const requestData = {
+        customerName: orderForm.customerName,
+        salespersonId: orderForm.salesId,
+        items: [
+          {
+            productId: orderForm.productId,
+            quantity: orderForm.quantity
+          }
+        ]
+      }
+      response = await orderApi.createOrder(requestData)
     } else {
-      response = await orderApi.updateOrder(orderForm.id, orderForm)
+      const requestData = {
+        customerName: orderForm.customerName,
+        salespersonId: orderForm.salesId
+      }
+      response = await orderApi.updateOrder(orderForm.id, requestData)
     }
     
     if (response.code === 200) {

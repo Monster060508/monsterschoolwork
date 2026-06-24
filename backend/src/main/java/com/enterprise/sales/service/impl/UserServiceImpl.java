@@ -75,6 +75,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (user.getRole() != null) {
             existingUser.setRole(user.getRole());
         }
+        if (user.getPhone() != null) {
+            existingUser.setPhone(user.getPhone());
+        }
+        if (user.getEmail() != null) {
+            existingUser.setEmail(user.getEmail());
+        }
         if (user.getPhotoUrl() != null) {
             existingUser.setPhotoUrl(user.getPhotoUrl());
         }
@@ -97,11 +103,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new RuntimeException("用户不存在");
         }
         
-        // 逻辑删除
-        user.setDeleted(1);
-        user.setUpdateTime(LocalDateTime.now());
+        // 检查是否已经删除
+        if (user.getDeleted() != null && user.getDeleted() == 1) {
+            throw new RuntimeException("用户已被删除");
+        }
         
-        return updateById(user);
+        // 使用自定义SQL直接更新deleted字段，避免@TableLogic导致更新失败
+        int updatedRows = userMapper.markUserDeleted(id);
+        if (updatedRows == 0) {
+            throw new RuntimeException("删除用户失败，数据库更新失败");
+        }
+        
+        return true;
     }
     
     @Override

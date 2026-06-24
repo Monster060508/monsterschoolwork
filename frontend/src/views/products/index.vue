@@ -59,16 +59,6 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="status" label="状态" width="100">
-        <template #default="{ row }">
-          <el-switch
-            v-model="row.status"
-            :active-value="1"
-            :inactive-value="0"
-            @change="handleStatusChange(row)"
-          />
-        </template>
-      </el-table-column>
       <el-table-column prop="createTime" label="创建时间" width="180" />
       <el-table-column label="操作" width="200">
         <template #default="{ row }">
@@ -202,8 +192,7 @@ const productForm = reactive({
   price: 0,
   stock: 0,
   image: '',
-  description: '',
-  status: 1
+  description: ''
 })
 
 // 表单验证规则
@@ -271,7 +260,14 @@ const showAddDialog = () => {
 // 显示编辑对话框
 const editProduct = (row: any) => {
   dialogType.value = 'edit'
-  Object.assign(productForm, row)
+  // 只映射表单需要的字段，避免字段名不匹配
+  productForm.id = row.id
+  productForm.name = row.name
+  productForm.category = row.category || ''
+  productForm.price = row.price
+  productForm.stock = row.stockQuantity
+  productForm.image = row.imageUrl
+  productForm.description = row.description
   dialogVisible.value = true
 }
 
@@ -314,10 +310,18 @@ const handleSubmit = async () => {
     submitLoading.value = true
     
     let response
+    // 构造后端期望的字段格式
+    const requestData = {
+      name: productForm.name,
+      description: productForm.description,
+      price: productForm.price,
+      stockQuantity: productForm.stock,
+      imageUrl: productForm.image
+    }
     if (dialogType.value === 'add') {
-      response = await productApi.createProduct(productForm)
+      response = await productApi.createProduct(requestData)
     } else {
-      response = await productApi.updateProduct(productForm.id, productForm)
+      response = await productApi.updateProduct(productForm.id, requestData)
     }
     
     if (response.code === 200) {
@@ -344,7 +348,6 @@ const resetForm = () => {
   productForm.stock = 0
   productForm.image = ''
   productForm.description = ''
-  productForm.status = 1
   
   if (productFormRef.value) {
     productFormRef.value.resetFields()
@@ -373,26 +376,6 @@ const beforeImageUpload = (file: File) => {
     ElMessage.error('上传图片大小不能超过 2MB!')
   }
   return isJPG && isLt2M
-}
-
-// 状态变更
-const handleStatusChange = async (row: any) => {
-  try {
-    const response = await productApi.updateProductStatus(row.id, row.status)
-    
-    if (response.code === 200) {
-      ElMessage.success('状态更新成功')
-    } else {
-      // 恢复原状态
-      row.status = row.status === 1 ? 0 : 1
-      ElMessage.error(response.message || '状态更新失败')
-    }
-  } catch (error: any) {
-    // 恢复原状态
-    row.status = row.status === 1 ? 0 : 1
-    console.error('状态更新失败:', error)
-    ElMessage.error('状态更新失败: ' + (error.message || '请检查网络连接'))
-  }
 }
 
 // 搜索

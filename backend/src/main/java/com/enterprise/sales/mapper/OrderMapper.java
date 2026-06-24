@@ -52,7 +52,7 @@ public interface OrderMapper extends BaseMapper<Order> {
     /**
      * 获取销售排行榜
      */
-    @Select("SELECT u.id as salesperson_id, u.name as salesperson_name, u.photo_url, COUNT(o.id) as order_count, COALESCE(SUM(o.total_amount), 0) as total_sales FROM sys_user u LEFT JOIN orders o ON u.id = o.salesperson_id AND o.status = 'COMPLETED' AND o.deleted = 0 WHERE u.role = 'SALESPERSON' AND u.deleted = 0 GROUP BY u.id, u.name, u.photo_url ORDER BY total_sales DESC LIMIT #{limit}")
+    @Select("SELECT u.id as salesperson_id, u.name as salesperson_name, u.photo_url, COUNT(o.id) as order_count, COALESCE(SUM(o.total_amount), 0) as total_sales FROM sys_user u LEFT JOIN orders o ON u.id = o.salesperson_id AND o.status = 'COMPLETED' AND o.deleted = 0 WHERE u.role = 'SALES' AND u.deleted = 0 GROUP BY u.id, u.name, u.photo_url ORDER BY total_sales DESC LIMIT #{limit}")
     List<Map<String, Object>> getSalesRanking(@Param("limit") int limit);
     
     /**
@@ -60,6 +60,18 @@ public interface OrderMapper extends BaseMapper<Order> {
      */
     @Select("SELECT DATE(create_time) as date, COUNT(*) as order_count, SUM(total_amount) as sales_amount FROM orders WHERE create_time BETWEEN #{startTime} AND #{endTime} AND deleted = 0 GROUP BY DATE(create_time) ORDER BY date")
     List<Map<String, Object>> getOrderTrend(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
+    
+    /**
+     * 获取最近订单
+     */
+    @Select("SELECT o.id, o.order_no as orderNo, o.customer_name as customerName, o.total_amount as amount, o.status, o.create_time as createTime, (SELECT GROUP_CONCAT(p.name) FROM order_item oi JOIN product p ON oi.product_id = p.id WHERE oi.order_id = o.id) as productName FROM orders o WHERE o.deleted = 0 ORDER BY o.create_time DESC LIMIT #{limit}")
+    List<Map<String, Object>> getRecentOrders(@Param("limit") int limit);
+    
+    /**
+     * 获取订单列表（关联销售人员和商品信息）
+     */
+    @Select("SELECT o.id, o.order_no AS orderNo, o.customer_name AS customerName, o.total_amount AS totalAmount, o.status, o.salesperson_id AS salespersonId, u.name AS salespersonName, (SELECT GROUP_CONCAT(p.name) FROM order_item oi JOIN product p ON oi.product_id = p.id WHERE oi.order_id = o.id) AS productName, o.create_time AS createTime, o.update_time AS updateTime FROM orders o LEFT JOIN sys_user u ON o.salesperson_id = u.id WHERE o.deleted = 0")
+    List<Order> findOrderList();
     
     /**
      * 获取总销售额

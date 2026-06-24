@@ -38,7 +38,7 @@
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column label="照片" width="100">
         <template #default="{ row }">
-          <el-avatar :size="50" :src="row.avatar">{{ row.name?.charAt(0) }}</el-avatar>
+          <el-avatar :size="50" :src="row.photoUrl">{{ row.name?.charAt(0) }}</el-avatar>
         </template>
       </el-table-column>
       <el-table-column prop="name" label="姓名" />
@@ -119,7 +119,7 @@
           </el-select>
         </el-form-item>
         
-        <el-form-item label="员工照片" prop="avatar">
+        <el-form-item label="员工照片" prop="photoUrl">
           <div class="avatar-upload">
             <el-upload
               class="avatar-uploader"
@@ -129,7 +129,7 @@
               :before-upload="beforeAvatarUpload"
               :headers="uploadHeaders"
             >
-              <img v-if="employeeForm.avatar" :src="employeeForm.avatar" class="avatar">
+              <img v-if="employeeForm.photoUrl" :src="employeeForm.photoUrl" class="avatar">
               <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
             </el-upload>
             <div class="avatar-tip">建议尺寸: 200x200 像素，大小不超过 1MB</div>
@@ -149,7 +149,7 @@
     <el-dialog v-model="viewDialogVisible" title="员工详情" width="600px">
       <div class="employee-detail">
         <div class="detail-header">
-          <el-avatar :size="100" :src="currentEmployee.avatar">{{ currentEmployee.name?.charAt(0) }}</el-avatar>
+          <el-avatar :size="100" :src="currentEmployee.photoUrl">{{ currentEmployee.name?.charAt(0) }}</el-avatar>
           <div class="detail-title">
             <h3>{{ currentEmployee.name }}</h3>
             <el-tag :type="currentEmployee.role === 'ADMIN' ? 'danger' : 'primary'" size="large">
@@ -223,7 +223,7 @@ const employeeForm = reactive({
   phone: '',
   email: '',
   role: 'SALES',
-  avatar: '',
+  photoUrl: '',
   status: 1
 })
 
@@ -322,18 +322,29 @@ const deleteEmployee = async (row: any) => {
       type: 'warning'
     })
     
+    console.log('开始删除员工，ID:', row.id)
     const response = await userApi.deleteUser(row.id)
+    console.log('删除响应:', response)
     
     if (response.code === 200) {
       ElMessage.success('删除成功')
-      fetchEmployees()
+      await fetchEmployees()
     } else {
+      console.error('删除失败，服务器返回:', response)
       ElMessage.error(response.message || '删除失败')
     }
   } catch (error: any) {
     if (error !== 'cancel') {
       console.error('删除员工失败:', error)
-      ElMessage.error('删除失败: ' + (error.message || '请检查网络连接'))
+      // 显示更详细的错误信息
+      let errorMsg = '删除失败'
+      if (error.response) {
+        // 服务器返回了错误响应
+        errorMsg += ': ' + (error.response.data?.message || error.response.statusText || '服务器错误')
+      } else if (error.message) {
+        errorMsg += ': ' + error.message
+      }
+      ElMessage.error(errorMsg)
     }
   }
 }
@@ -376,7 +387,7 @@ const resetForm = () => {
   employeeForm.phone = ''
   employeeForm.email = ''
   employeeForm.role = 'SALES'
-  employeeForm.avatar = ''
+  employeeForm.photoUrl = ''
   employeeForm.status = 1
   
   if (employeeFormRef.value) {
@@ -387,7 +398,7 @@ const resetForm = () => {
 // 头像上传成功
 const handleAvatarSuccess = (response: any) => {
   if (response.code === 200) {
-    employeeForm.avatar = response.data.url
+    employeeForm.photoUrl = response.data.url
     ElMessage.success('照片上传成功')
   } else {
     ElMessage.error(response.message || '照片上传失败')
@@ -435,4 +446,137 @@ const handleSearch = () => {
 }
 
 // 分页大小变化
-const handleSizeChange = (val: number) => 21,707)
+const handleSizeChange = (val: number) => {
+  pageSize.value = val
+  currentPage.value = 1
+  fetchEmployees()
+}
+
+// 页码变化
+const handleCurrentChange = (val: number) => {
+  currentPage.value = val
+  fetchEmployees()
+}
+
+// 初始化
+onMounted(() => {
+  fetchEmployees()
+})
+</script>
+
+<style scoped>
+.employees-container {
+  padding: 20px;
+}
+
+.page-header {
+  margin-bottom: 20px;
+}
+
+.page-header h2 {
+  margin: 0 0 8px 0;
+  font-size: 24px;
+  color: #303133;
+}
+
+.page-header p {
+  margin: 0;
+  color: #909399;
+  font-size: 14px;
+}
+
+.action-bar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.avatar-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.avatar-uploader {
+  width: 120px;
+  height: 120px;
+  border: 1px dashed #d9d9d9;
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-uploader:hover {
+  border-color: #409eff;
+}
+
+.avatar {
+  width: 120px;
+  height: 120px;
+  display: block;
+}
+
+.avatar-uploader-icon {
+  font-size: 28px;
+  color: #8c939d;
+}
+
+.avatar-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #909399;
+}
+
+.employee-detail {
+  padding: 20px;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.detail-title {
+  margin-left: 20px;
+}
+
+.detail-title h3 {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+}
+
+.detail-info {
+  border-top: 1px solid #ebeef5;
+  padding-top: 20px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.info-item .label {
+  width: 100px;
+  color: #909399;
+  font-size: 14px;
+}
+
+.info-item .value {
+  flex: 1;
+  color: #303133;
+  font-size: 14px;
+}
+</style>

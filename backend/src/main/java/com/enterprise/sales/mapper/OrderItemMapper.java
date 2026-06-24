@@ -39,6 +39,6 @@ public interface OrderItemMapper extends BaseMapper<OrderItem> {
     /**
      * 获取热销商品TOP N
      */
-    @Select("SELECT oi.product_id, p.name as product_name, p.image_url, SUM(oi.quantity) as sales_quantity, SUM(oi.quantity * oi.unit_price) as sales_amount FROM order_item oi LEFT JOIN product p ON oi.product_id = p.id LEFT JOIN orders o ON oi.order_id = o.id AND o.status = 'COMPLETED' GROUP BY oi.product_id, p.name, p.image_url ORDER BY sales_quantity DESC LIMIT #{limit}")
+    @Select("SELECT oi.product_id, p.name as product_name, p.image_url, p.stock_quantity, SUM(oi.quantity) as sales_quantity, SUM(oi.quantity * oi.unit_price) as sales_amount FROM order_item oi LEFT JOIN product p ON oi.product_id = p.id LEFT JOIN orders o ON oi.order_id = o.id AND o.status = 'COMPLETED' GROUP BY oi.product_id, p.name, p.image_url, p.stock_quantity ORDER BY sales_quantity DESC LIMIT #{limit}")
     List<Map<String, Object>> getHotProducts(@Param("limit") int limit);
 }

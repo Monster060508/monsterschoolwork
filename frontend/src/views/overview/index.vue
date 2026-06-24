@@ -94,11 +94,11 @@
               {{ index + 1 }}
             </div>
             <div class="ranking-avatar">
-              <el-avatar :size="40" :src="item.avatar">{{ item.name?.charAt(0) }}</el-avatar>
+              <el-avatar :size="40" :src="item.photo_url">{{ item.salesperson_name?.charAt(0) }}</el-avatar>
             </div>
             <div class="ranking-info">
-              <div class="ranking-name">{{ item.name }}</div>
-              <div class="ranking-value">销售额: ¥{{ item.sales?.toLocaleString() || '0' }}</div>
+              <div class="ranking-name">{{ item.salesperson_name }}</div>
+              <div class="ranking-value">销售额: ¥{{ item.total_sales?.toLocaleString() || '0' }}</div>
             </div>
           </div>
         </div>
@@ -113,13 +113,13 @@
           <div v-for="(item, index) in hotProducts" :key="index" class="product-item">
             <div class="product-index">{{ index + 1 }}</div>
             <div class="product-image">
-              <img :src="item.image || 'https://via.placeholder.com/50'" alt="商品图片">
+              <img :src="item.image_url || 'https://via.placeholder.com/50'" alt="商品图片">
             </div>
             <div class="product-info">
-              <div class="product-name">{{ item.name }}</div>
+              <div class="product-name">{{ item.product_name }}</div>
               <div class="product-stats">
-                <span>销量: {{ item.salesCount }}</span>
-                <span>库存: {{ item.stock }}</span>
+                <span>销量: {{ item.sales_quantity }}</span>
+                <span>库存: {{ item.stock_quantity }}</span>
               </div>
             </div>
           </div>
@@ -240,7 +240,10 @@ const initCharts = async () => {
       
       const salesDataResponse = await overviewApi.getSalesTrend(salesChartPeriod.value)
       if (salesDataResponse.code === 200) {
-        const salesData = salesDataResponse.data
+        const rawData = salesDataResponse.data
+        // 后端返回 [{date, order_count, sales_amount}]，转换为 {dates, values}
+        const dates = rawData.map((item: any) => item.date)
+        const values = rawData.map((item: any) => Number(item.sales_amount) || 0)
         
         const salesOption = {
           tooltip: {
@@ -258,7 +261,7 @@ const initCharts = async () => {
           xAxis: [
             {
               type: 'category',
-              data: salesData.dates,
+              data: dates,
               axisTick: {
                 alignWithLabel: true
               }
@@ -277,7 +280,7 @@ const initCharts = async () => {
               name: '销售额',
               type: 'bar',
               barWidth: '60%',
-              data: salesData.values,
+              data: values,
               itemStyle: {
                 color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
                   { offset: 0, color: '#83bff6' },
@@ -299,7 +302,18 @@ const initCharts = async () => {
       
       const orderStatusResponse = await overviewApi.getOrderStatusDistribution()
       if (orderStatusResponse.code === 200) {
-        const orderStatusData = orderStatusResponse.data
+        const rawData = orderStatusResponse.data
+        // 后端返回 {status: count} 格式，转换为 {name, value} 格式
+        const statusNameMap: Record<string, string> = {
+          'PENDING': '待处理',
+          'IN_PROGRESS': '进行中',
+          'COMPLETED': '已完成',
+          'CANCELLED': '已取消'
+        }
+        const orderStatusData = Object.entries(rawData).map(([status, count]) => ({
+          name: statusNameMap[status] || status,
+          value: count
+        }))
         
         const orderStatusOption = {
           tooltip: {

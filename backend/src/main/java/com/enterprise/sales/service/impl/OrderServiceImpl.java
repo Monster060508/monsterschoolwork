@@ -5,11 +5,13 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.enterprise.sales.entity.Order;
 import com.enterprise.sales.entity.OrderItem;
 import com.enterprise.sales.entity.Product;
+import com.enterprise.sales.entity.User;
 import com.enterprise.sales.enums.OrderStatus;
 import com.enterprise.sales.mapper.OrderMapper;
 import com.enterprise.sales.service.OrderItemService;
 import com.enterprise.sales.service.OrderService;
 import com.enterprise.sales.service.ProductService;
+import com.enterprise.sales.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -34,10 +36,16 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     private final OrderMapper orderMapper;
     private final OrderItemService orderItemService;
     private final ProductService productService;
+    private final UserService userService;
     
     @Override
     @Transactional
     public Order createOrder(Order order, List<Map<String, Object>> items) {
+        // 校验订单项
+        if (items == null || items.isEmpty()) {
+            throw new RuntimeException("订单商品不能为空");
+        }
+        
         // 生成订单号
         order.setOrderNo(generateOrderNo());
         
@@ -220,7 +228,12 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         int offset = (page - 1) * size;
         queryWrapper.last("LIMIT " + offset + ", " + size);
         
-        return list(queryWrapper);
+        List<Order> orders = list(queryWrapper);
+        
+        // 填充关联字段（销售人员名称和商品名称）
+        populateOrderExtraFields(orders);
+        
+        return orders;
     }
     
     @Override
@@ -245,6 +258,49 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         }
         
         return count(queryWrapper);
+    }
+    
+    /**
+     * 填充订单的关联字段（销售人员名称和商品名称）
+     */
+    private void populateOrderExtraFields(List<Order> orders) {
+        if (orders == null || orders.isEmpty()) {
+            return;
+        }
+        
+        for (Order order : orders) {
+            // 填充销售人员名称
+            if (order.getSalespersonId() != null) {
+                try {
+                    User salesperson = userService.getById(order.getSalespersonId());
+                    if (salesperson != null) {
+                        order.setSalespersonName(salesperson.getName());
+                    }
+                } catch (Exception e) {
+                    // 忽略查询失败
+                }
+            }
+            
+            // 填充商品名称
+            try {
+                List<OrderItem> items = orderItemService.findByOrderId(order.getId());
+                if (items != null && !items.isEmpty()) {
+                    StringBuilder productNames = new StringBuilder();
+                    for (OrderItem item : items) {
+                        Product product = productService.getById(item.getProductId());
+                        if (product != null) {
+                            if (productNames.length() > 0) {
+                                productNames.append(", ");
+                            }
+                            productNames.append(product.getName());
+                        }
+                    }
+                    order.setProductName(productNames.toString());
+                }
+            } catch (Exception e) {
+                // 忽略查询失败
+            }
+        }
     }
     
     @Override
@@ -272,6 +328,11 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         LocalDateTime startTime = endTime.minusDays(days);
         
         return orderMapper.getOrderTrend(startTime, endTime);
+    }
+    
+    @Override
+    public List<Map<String, Object>> getRecentOrders(int limit) {
+        return orderMapper.getRecentOrders(limit);
     }
     
     @Override

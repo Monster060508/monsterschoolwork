@@ -1,0 +1,375 @@
+# 配置文档
+
+## 概述
+本文档详细说明企业销售管理系统的配置信息，包括数据库、OSS、大模型等各项配置参数及其用途。
+
+## 配置文件位置
+- 主配置文件：`backend/src/main/resources/application.yml`
+- 环境配置文件：`application-{profile}.yml`（可选）
+
+## 数据库配置
+
+### MySQL配置（业务数据库）
+```yaml
+spring:
+  datasource:
+    mysql:
+      url: jdbc:mysql://localhost:3306/sales_management?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
+      username: root
+      password: your_mysql_password
+      driver-class-name: com.mysql.cj.jdbc.Driver
+```
+
+**配置说明：**
+- `url`: MySQL数据库连接地址，包含字符编码、时区等参数
+- `username`: 数据库用户名
+- `password`: 数据库密码
+- `driver-class-name`: MySQL驱动类名
+
+**数据库初始化：**
+1. 创建数据库：`CREATE DATABASE sales_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`
+2. 执行初始化脚本：`sql/init.sql`
+3. 插入初始数据：`sql/data.sql`
+
+### PostgreSQL配置（向量数据库）
+```yaml
+spring:
+  datasource:
+    postgresql:
+      url: jdbc:postgresql://localhost:5432/sales_vectors
+      username: your_postgresql_user
+      password: your_postgresql_password
+      driver-class-name: org.postgresql.Driver
+```
+
+**配置说明：**
+- 用于存储向量数据，支持RAG功能
+- 需要安装PostgreSQL向量扩展：`CREATE EXTENSION vector;`
+- 端口：5432
+- 用户名：your_postgresql_user
+- 密码：your_postgresql_password
+
+## MyBatis Plus配置
+```yaml
+mybatis-plus:
+  mapper-locations: classpath:/mapper/**/*.xml
+  type-aliases-package: com.enterprise.sales.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+```
+
+**配置说明：**
+- `mapper-locations`: MyBatis XML映射文件位置
+- `type-aliases-package`: 实体类别名包
+- `map-underscore-to-camel-case`: 开启驼峰命名转换
+- `log-impl`: 日志实现类（开发环境使用StdOutImpl）
+- `id-type`: 主键生成策略（自动递增）
+- `logic-delete-field`: 逻辑删除字段
+- `logic-delete-value`: 逻辑删除值（1表示已删除）
+- `logic-not-delete-value`: 逻辑未删除值（0表示未删除）
+
+## 阿里云OSS配置
+```yaml
+aliyun:
+  oss:
+    endpoint: https://oss-cn-hangzhou.aliyuncs.com
+    bucket-name: your_bucket_name
+    region: cn-hangzhou
+    access-key-id: your_access_key_id
+    access-key-secret: your_access_key_secret
+```
+
+**配置说明：**
+- `endpoint`: OSS服务端点
+- `bucket-name`: 存储桶名称
+- `region`: 存储区域
+- `access-key-id`: 阿里云AccessKey ID
+- `access-key-secret`: 阿里云AccessKey Secret
+
+**使用场景：**
+- 商品图片上传
+- 员工照片上传
+- 文件存储服务
+
+## 大模型配置
+
+### OpenAI兼容API配置
+```yaml
+langchain4j:
+  open-ai:
+    chat-model:
+      base-url: https://your_api_endpoint/v1
+      api-key: your_api_key
+      model-name: mimo-v2.5-pro
+      temperature: 0.7
+      max-tokens: 2000
+    embedding-model:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      api-key: your_embedding_api_key
+      model-name: text-embedding-v1
+```
+
+**配置说明：**
+- `base-url`: API服务地址
+- `api-key`: API密钥
+- `model-name`: 模型名称
+- `temperature`: 温度参数（控制随机性，0.7表示适中）
+- `max-tokens`: 最大token数量
+
+**模型用途：**
+1. **Chat Model（mimo-v2.5-pro）**：
+   - 智能问答对话
+   - SQL语句生成
+   - 数据分析整合
+   - 意图识别
+
+2. **Embedding Model（text-embedding-v1）**：
+   - 文本向量化
+   - 语义检索
+   - RAG文档检索
+
+## 服务器配置
+```yaml
+server:
+  port: 8080
+```
+
+**配置说明：**
+- `port`: 应用服务端口，默认8080
+
+## 日志配置
+```yaml
+logging:
+  level:
+    com.enterprise.sales: debug
+    org.springframework.security: debug
+```
+
+**配置说明：**
+- 设置日志级别为debug，便于开发和调试
+- 生产环境建议设置为info或warn
+
+## 安全配置
+
+### Spring Security配置
+- 使用JWT进行身份验证
+- 基于角色的访问控制（RBAC）
+- 密码使用BCrypt加密
+
+### 权限矩阵
+| 功能模块 | 管理员(ADMIN) | 销售(SALES) |
+|---------|---------------|-------------|
+| 总览模块 | ✅ | ✅ |
+| 商品管理 | ✅ | ❌ |
+| 订单管理 | ✅ | ✅ |
+| 员工管理 | ✅ | ❌ |
+| 智能问答 | ✅ | ✅ |
+
+## 文件上传配置
+
+### 图片上传限制
+- 最大文件大小：10MB
+- 支持格式：JPG, JPEG, PNG, GIF, WEBP
+- 上传路径：`/api/upload/image`
+
+### 文件上传限制
+- 最大文件大小：50MB
+- 支持格式：PDF, DOC, DOCX, XLS, XLSX
+- 上传路径：`/api/upload/file`
+
+## 缓存配置（可选）
+```yaml
+spring:
+  cache:
+    type: redis
+  redis:
+    host: localhost
+    port: 6379
+    password: 
+    database: 0
+```
+
+## 异步任务配置
+```yaml
+spring:
+  task:
+    execution:
+      pool:
+        core-size: 5
+        max-size: 10
+        queue-capacity: 100
+      thread-name-prefix: async-task-
+```
+
+## 定时任务配置
+```yaml
+spring:
+  task:
+    scheduling:
+      pool:
+        size: 5
+      thread-name-prefix: scheduled-task-
+```
+
+## 跨域配置
+```yaml
+spring:
+  cors:
+    allowed-origins: http://localhost:5173
+    allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+    allowed-headers: "*"
+    allow-credentials: true
+    max-age: 3600
+```
+
+## 监控配置（可选）
+```yaml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+```
+
+## 配置文件加载顺序
+1. `application.yml` - 主配置文件
+2. `application-{profile}.yml` - 环境配置文件
+3. 环境变量
+4. 命令行参数
+
+## 配置文件示例
+
+### 开发环境配置 `application-dev.yml`
+```yaml
+spring:
+  datasource:
+    mysql:
+      url: jdbc:mysql://localhost:3306/sales_management_dev?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
+      username: root
+      password: 123456
+
+logging:
+  level:
+    com.enterprise.sales: debug
+```
+
+### 生产环境配置 `application-prod.yml`
+```yaml
+spring:
+  datasource:
+    mysql:
+      url: jdbc:mysql://prod-db-host:3306/sales_management?useUnicode=true&characterEncoding=utf-8&useSSL=true&serverTimezone=Asia/Shanghai
+      username: ${DB_USERNAME}
+      password: ${DB_PASSWORD}
+
+logging:
+  level:
+    com.enterprise.sales: info
+```
+
+## 配置文件加密（生产环境）
+建议对敏感配置进行加密：
+1. 数据库密码
+2. OSS AccessKey
+3. 大模型API Key
+
+可以使用Jasypt进行配置加密：
+```yaml
+jasypt:
+  encryptor:
+    password: ${JASYPT_PASSWORD}
+    algorithm: PBEWithMD5AndDES
+```
+
+## 配置验证
+系统启动时会自动验证以下配置：
+1. 数据库连接是否正常
+2. OSS配置是否有效
+3. 大模型API是否可访问
+4. 必要目录是否存在
+
+## 配置更新
+1. 修改配置文件后需要重启应用
+2. 部分配置支持热更新（如日志级别）
+3. 生产环境建议使用配置中心（如Nacos、Apollo）
+
+## 故障排查
+
+### 数据库连接失败
+1. 检查数据库服务是否启动
+2. 验证连接地址和端口
+3. 确认用户名密码正确
+4. 检查防火墙设置
+
+### OSS上传失败
+1. 检查AccessKey权限
+2. 确认Bucket存在且权限正确
+3. 验证网络连接
+4. 检查文件大小限制
+
+### 大模型API调用失败
+1. 检查API Key是否有效
+2. 确认API地址可访问
+3. 检查网络代理设置
+4. 验证模型名称是否正确
+
+## 性能优化配置
+
+### 数据库连接池
+```yaml
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 30000
+      connection-timeout: 30000
+      max-lifetime: 1800000
+```
+
+### MyBatis Plus缓存
+```yaml
+mybatis-plus:
+  configuration:
+    cache-enabled: true
+    local-cache-scope: statement
+```
+
+## 配置文件备份
+建议定期备份配置文件，特别是生产环境配置。可以使用版本控制系统管理配置文件。
+
+## 配置文件版本控制
+1. 将配置文件纳入版本控制
+2. 使用环境变量管理敏感信息
+3. 使用配置文件模板管理不同环境
+
+## 配置文件模板
+创建配置文件模板，方便新环境部署：
+1. `application.template.yml` - 配置模板
+2. `application-local.yml` - 本地开发配置
+3. `application-test.yml` - 测试环境配置
+4. `application-prod.yml` - 生产环境配置
+
+## 配置文件检查清单
+- [ ] 数据库连接配置正确
+- [ ] OSS配置信息完整
+- [ ] 大模型API配置有效
+- [ ] 服务器端口配置正确
+- [ ] 日志级别设置合理
+- [ ] 安全配置符合要求
+- [ ] 缓存配置（如需要）
+- [ ] 监控配置（如需要）
+
+---
+
+**注意**：配置文件中的敏感信息（如密码、API Key）在生产环境中应使用环境变量或配置中心管理，避免硬编码在配置文件中。

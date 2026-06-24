@@ -128,13 +128,13 @@
     <!-- 查看对话框 -->
     <el-dialog v-model="viewDialogVisible" title="查看Markdown文档" width="800px">
       <div class="document-viewer">
-        <h3>{{ viewDocument.title }}</h3>
+        <h3>{{ currentViewDocument.title }}</h3>
         <div class="document-meta">
-          <span>文件名: {{ viewDocument.fileName }}</span>
-          <span>上传时间: {{ viewDocument.createTime }}</span>
+          <span>文件名: {{ currentViewDocument.fileName }}</span>
+          <span>上传时间: {{ currentViewDocument.createTime }}</span>
         </div>
         <div class="document-content">
-          <pre>{{ viewDocument.content }}</pre>
+          <pre>{{ currentViewDocument.content }}</pre>
         </div>
       </div>
       
@@ -177,7 +177,7 @@ const editForm = ref({
   content: ''
 })
 
-const viewDocument = ref<any>({})
+const currentViewDocument = ref<any>({})
 
 // 获取文档列表
 const fetchDocuments = async () => {
@@ -279,7 +279,7 @@ const viewDocument = async (row: any) => {
   try {
     const response = await markdownDocumentApi.getDocument(row.id)
     if (response.code === 200) {
-      viewDocument.value = response.data
+      currentViewDocument.value = response.data
       viewDialogVisible.value = true
     }
   } catch (error) {
