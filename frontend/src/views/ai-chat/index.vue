@@ -391,12 +391,16 @@ const sendMessage = async () => {
     requestData,
     // onToken - 每收到一个token
     (token: string) => {
-      messages.value[aiMessageIndex].content += token
-      nextTick(() => scrollToBottom())
+      if (aiMessageIndex < messages.value.length) {
+        messages.value[aiMessageIndex].content += token
+        nextTick(() => scrollToBottom())
+      }
     },
     // onComplete - 完成
     (response: any) => {
-      messages.value[aiMessageIndex].isStreaming = false
+      if (aiMessageIndex < messages.value.length) {
+        messages.value[aiMessageIndex].isStreaming = false
+      }
       loading.value = false
       streamingActive.value = false
       
@@ -414,12 +418,14 @@ const sendMessage = async () => {
     (error: string) => {
       console.error('流式聊天失败:', error)
       
-      // 如果还没有内容，显示错误信息
-      if (!messages.value[aiMessageIndex].content) {
-        messages.value[aiMessageIndex].content = '抱歉，处理您的问题时出现错误，请稍后重试。'
+      if (aiMessageIndex < messages.value.length) {
+        // 如果还没有内容，显示错误信息
+        if (!messages.value[aiMessageIndex].content) {
+          messages.value[aiMessageIndex].content = '抱歉，处理您的问题时出现错误，请稍后重试。'
+        }
+        messages.value[aiMessageIndex].isStreaming = false
       }
       
-      messages.value[aiMessageIndex].isStreaming = false
       loading.value = false
       streamingActive.value = false
       
