@@ -175,13 +175,17 @@ public class AIServiceImpl implements AIService {
     
     @Override
     public String generateAnswer(String question, String context) {
-        // 简化实现：基于模板生成回答
-        // 实际应该调用大模型API
-        
+        // 通用问答模板
         if (context != null && !context.isEmpty()) {
             return "根据相关文档信息，" + context;
         } else {
-            return "感谢您的提问。关于\"" + question + "\"，我正在学习相关知识，暂时无法给出准确回答。请稍后再试或联系管理员。";
+            return "您好！关于您的问题，我目前主要支持以下功能：\n\n" +
+                   "1. 销售数据查询与分析\n" +
+                   "2. 商品库存信息查询\n" +
+                   "3. 订单状态查询\n" +
+                   "4. 员工信息查询\n" +
+                   "5. 统计报表分析\n\n" +
+                   "请您尝试提出以上相关的问题，我会为您提供详细的分析。";
         }
     }
     
@@ -206,32 +210,31 @@ public class AIServiceImpl implements AIService {
     }
     
     private String analyzeDataWithAI(String question, List<Map<String, Object>> data) {
-        // 简化实现：基于数据生成简单分析
+        // 基于数据生成自然语言分析
         if (data == null || data.isEmpty()) {
-            return "没有查询到相关数据。";
+            return "抱歉，没有查询到与您问题相关的数据。";
         }
         
         StringBuilder analysis = new StringBuilder();
-        analysis.append("根据查询结果，");
+        analysis.append("根据查询结果，共找到").append(data.size()).append("条记录：\n\n");
         
-        if (data.size() == 1) {
-            Map<String, Object> row = data.get(0);
-            analysis.append("查询到1条记录：");
+        int maxRows = Math.min(5, data.size());
+        for (int i = 0; i < maxRows; i++) {
+            Map<String, Object> row = data.get(i);
+            analysis.append(i + 1).append(". ");
+            
+            List<String> parts = new ArrayList<>();
             for (Map.Entry<String, Object> entry : row.entrySet()) {
-                analysis.append(entry.getKey()).append("=").append(entry.getValue()).append(", ");
+                String colName = formatColumnName(entry.getKey());
+                String value = formatCellValue(entry.getKey(), entry.getValue());
+                parts.add(colName + "：" + value);
             }
-            analysis.delete(analysis.length() - 2, analysis.length());
-        } else {
-            analysis.append("查询到").append(data.size()).append("条记录。");
-            // 显示前3条数据
-            for (int i = 0; i < Math.min(3, data.size()); i++) {
-                Map<String, Object> row = data.get(i);
-                analysis.append("\n").append(i + 1).append(". ");
-                for (Map.Entry<String, Object> entry : row.entrySet()) {
-                    analysis.append(entry.getKey()).append("=").append(entry.getValue()).append(", ");
-                }
-                analysis.delete(analysis.length() - 2, analysis.length());
-            }
+            analysis.append(String.join("，", parts));
+            analysis.append("\n");
+        }
+        
+        if (data.size() > maxRows) {
+            analysis.append("\n（共").append(data.size()).append("条记录，仅展示前").append(maxRows).append("条）");
         }
         
         return analysis.toString();
@@ -445,7 +448,7 @@ public class AIServiceImpl implements AIService {
         prompt.append("- 使用自然流畅的中文，语句完整通顺\n");
         prompt.append("- 用简洁的段落回答，不要罗列原始数据字段名\n");
         prompt.append("- 将英文字段名翻译为中文后呈现给用户\n");
-        prompt.append("- 金额用"元"为单位，保留两位小数\n");
+        prompt.append("- 金额以元为单位，保留两位小数\n");
         prompt.append("- 如果数据为空，告知用户暂无相关数据\n\n");
         
         // 如果有SQL数据，格式化后放入提示

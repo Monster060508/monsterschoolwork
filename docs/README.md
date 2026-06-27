@@ -11,15 +11,16 @@
 - **LangChain4j 0.25.0** - AI大模型集成
 - **阿里云OSS** - 对象存储服务
 - **Apache POI 5.2.5** - PDF报表生成
-- **MySQL** - 业务数据库
-- **PostgreSQL** - 向量数据库（用于RAG）
+- **MySQL 8.0** - 业务数据库
 - **Spring Security** - 权限控制
+- **JWT** - Token认证
 
 ### 前端技术
 - **Vue 3** - 前端框架
 - **Element Plus** - UI组件库
 - **Axios** - HTTP客户端
 - **ECharts** - 数据可视化
+- **Vite** - 构建工具
 
 ## 系统功能模块
 
@@ -58,12 +59,12 @@
   - 无商品管理和员工管理权限
 
 ### 5. 智能问答模块
-- **意图分析**：自动识别用户问题类型
-- **传统RAG（仅支持Markdown文件）**：基于Markdown文档检索的问答系统
+- **意图分析**：自动识别用户问题类型（销售查询、商品查询、订单查询、员工查询等）
 - **SQL生成**：根据问题自动生成SQL查询数据库
 - **AI分析**：对查询结果进行智能分析和整合
+- **流式输出**：支持SSE流式输出，实时显示AI回答
 - **自然语言交互**：支持自然语言提问
-- **文档管理**：支持上传、编辑、删除Markdown文档，通过OSS存储
+- **对话管理**：支持多轮对话、历史记录查看和清除
 
 ## 项目结构
 
@@ -75,26 +76,36 @@
 │   │   │   ├── java/com/enterprise/sales/
 │   │   │   │   ├── config/         # 配置类
 │   │   │   │   ├── controller/     # 控制器
-│   │   │   │   ├── dto/            # 数据传输对象
 │   │   │   │   ├── entity/         # 实体类
 │   │   │   │   ├── enums/          # 枚举类
 │   │   │   │   ├── mapper/         # MyBatis Mapper接口
 │   │   │   │   ├── service/        # 服务层
-│   │   │   │   └── vo/             # 视图对象
+│   │   │   │   └── util/           # 工具类
 │   │   │   └── resources/
-│   │   │       ├── mapper/         # MyBatis XML映射文件
 │   │   │       └── application.yml # 配置文件
 │   │   └── test/                   # 测试代码
 │   └── pom.xml                     # Maven配置
 ├── frontend/                   # 前端Vue项目
+│   ├── src/
+│   │   ├── api/                # API接口
+│   │   ├── assets/             # 静态资源
+│   │   ├── components/         # 组件
+│   │   ├── layouts/            # 布局
+│   │   ├── router/             # 路由
+│   │   ├── stores/             # 状态管理
+│   │   └── views/              # 页面视图
+│   ├── package.json
+│   └── vite.config.js
 ├── docs/                       # 项目文档
 │   ├── README.md               # 项目说明
-│   ├── 配置文档.md              # 配置说明
 │   ├── API文档.md              # API接口文档
 │   └── 功能介绍.md              # 功能模块介绍
-└── sql/                        # 数据库脚本
-    ├── init.sql                # 数据库初始化脚本
-    └── data.sql                # 初始数据脚本
+├── sql/                        # 数据库脚本
+│   ├── init.sql                # 数据库初始化脚本
+│   └── data.sql                # 初始数据脚本
+├── quick-start.bat             # 快速启动脚本
+├── start.bat                   # 启动脚本
+└── stop.bat                    # 停止脚本
 ```
 
 ## 快速开始
@@ -104,14 +115,14 @@
 - Maven 3.6+
 - Node.js 16+
 - MySQL 8.0+
-- PostgreSQL 12+（用于向量存储）
 
 ### 后端启动
-1. 配置数据库连接信息（见`配置文档.md`）
+1. 配置数据库连接信息（见`application.yml`）
 2. 执行数据库初始化脚本：`sql/init.sql`
-3. 进入backend目录：`cd backend`
-4. 执行Maven构建：`mvn clean install`
-5. 启动Spring Boot应用：`mvn spring-boot:run`
+3. 执行初始数据脚本：`sql/data.sql`
+4. 进入backend目录：`cd backend`
+5. 执行Maven构建：`mvn clean install`
+6. 启动Spring Boot应用：`mvn spring-boot:run`
 
 ### 前端启动
 1. 进入frontend目录：`cd frontend`
@@ -119,15 +130,98 @@
 3. 启动开发服务器：`npm run dev`
 4. 访问系统：`http://localhost:5173`
 
+### 快速启动（Windows）
+```bash
+# 双击运行 quick-start.bat 脚本，自动启动前后端服务
+.\quick-start.bat
+```
+
 ### 默认账户
 - **管理员**：admin / admin123
-- **销售**：sales / sales123
+- **销售**：sales001 / sales123
 
 ## 配置说明
-详细的配置信息请参考：
-- [配置文档.md](./配置文档.md) - 系统配置详细说明
-- [API文档.md](./API文档.md) - 后端API接口文档
-- [功能介绍.md](./功能介绍.md) - 功能模块详细介绍
+
+### 后端配置（application.yml）
+```yaml
+# 数据库配置
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/sales_management?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf-8
+    username: root
+    password: your_password
+
+# 大模型配置
+langchain4j:
+  open-ai:
+    chat-model:
+      base-url: https://api.openai.com/v1
+      api-key: your_api_key
+      model-name: gpt-3.5-turbo
+      temperature: 0.3
+      max-tokens: 2000
+
+# 阿里云OSS配置
+aliyun:
+  oss:
+    endpoint: https://oss-cn-hangzhou.aliyuncs.com
+    bucket-name: your_bucket
+    access-key-id: your_access_key
+    access-key-secret: your_access_secret
+```
+
+## API接口概览
+
+### 认证接口
+- `POST /api/auth/login` - 用户登录
+- `POST /api/auth/logout` - 用户登出
+- `GET /api/auth/me` - 获取当前用户信息
+
+### 用户管理接口
+- `GET /api/users` - 获取用户列表
+- `GET /api/users/{id}` - 获取用户详情
+- `POST /api/users` - 创建用户
+- `PUT /api/users/{id}` - 更新用户
+- `DELETE /api/users/{id}` - 删除用户
+- `POST /api/users/upload-photo` - 上传用户照片
+
+### 商品管理接口
+- `GET /api/products` - 获取商品列表
+- `GET /api/products/{id}` - 获取商品详情
+- `POST /api/products` - 创建商品
+- `PUT /api/products/{id}` - 更新商品
+- `DELETE /api/products/{id}` - 删除商品
+- `POST /api/products/upload-image` - 上传商品图片
+
+### 订单管理接口
+- `GET /api/orders` - 获取订单列表
+- `GET /api/orders/{id}` - 获取订单详情
+- `POST /api/orders` - 创建订单
+- `PUT /api/orders/{id}/status` - 更新订单状态
+- `PUT /api/orders/{id}` - 更新订单信息
+- `DELETE /api/orders/{id}` - 删除订单
+- `GET /api/orders/{id}/export-pdf` - 导出订单PDF
+
+### 总览模块接口
+- `GET /api/overview/statistics` - 获取销售统计数据
+- `GET /api/overview/sales-ranking` - 获取销售排行榜
+- `GET /api/overview/hot-products` - 获取热门商品
+- `GET /api/overview/order-trend` - 获取订单趋势数据
+- `GET /api/overview/export-pdf` - 导出总览PDF报表
+
+### 智能问答接口
+- `POST /api/ai/chat` - 发送问题
+- `POST /api/ai/chat/stream` - 流式聊天（SSE）
+- `GET /api/ai/conversation/{conversationId}` - 获取对话历史
+- `DELETE /api/ai/conversation/{conversationId}` - 清除对话历史
+- `GET /api/ai/conversations` - 获取所有对话列表
+- `POST /api/ai/analyze` - 分析数据
+
+### 文件上传接口
+- `POST /api/upload/image` - 上传图片
+- `POST /api/upload/file` - 上传文件
+
+详细的API文档请参考：[API文档.md](./API文档.md)
 
 ## 开发规范
 
@@ -156,16 +250,25 @@
 1. 构建生产版本：`npm run build`
 2. 部署dist目录到Web服务器（如Nginx）
 
-### Docker部署（可选）
-```bash
-# 构建后端镜像
-docker build -t sales-backend ./backend
+### Nginx配置示例
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
 
-# 构建前端镜像
-docker build -t sales-frontend ./frontend
+    # 前端静态文件
+    location / {
+        root /path/to/frontend/dist;
+        try_files $uri $uri/ /index.html;
+    }
 
-# 使用docker-compose启动
-docker-compose up -d
+    # API代理
+    location /api/ {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
 ```
 
 ## 常见问题
@@ -185,12 +288,10 @@ docker-compose up -d
 - 确认API Key是否有效
 - 验证网络连接
 
-## 贡献指南
-1. Fork 本仓库
-2. 创建功能分支：`git checkout -b feature/your-feature`
-3. 提交更改：`git commit -m 'Add some feature'`
-4. 推送到分支：`git push origin feature/your-feature`
-5. 创建Pull Request
+### 4. 前端无法访问后端API
+- 检查后端服务是否启动
+- 确认代理配置是否正确
+- 检查CORS配置
 
 ## 许可证
 本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件

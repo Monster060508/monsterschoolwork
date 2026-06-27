@@ -83,6 +83,15 @@ JWT Token包含以下Claims：
 }
 ```
 
+**错误响应**:
+```json
+{
+  "code": 400,
+  "message": "用户名或密码错误",
+  "data": null
+}
+```
+
 ### 2. 用户登出
 **接口地址**: `POST /api/auth/logout`
 
@@ -506,8 +515,7 @@ Content-Type: multipart/form-data
 - `size`: 每页数量（默认10）
 - `status`: 订单状态筛选（可选）
 - `salespersonId`: 销售人员ID筛选（可选）
-- `startDate`: 开始日期（可选）
-- `endDate`: 结束日期（可选）
+- `keyword`: 搜索关键词（可选）
 
 **请求头**:
 ```
@@ -761,7 +769,9 @@ Authorization: Bearer {token}
     "pendingOrders": 50,
     "inProgressOrders": 100,
     "completedOrders": 300,
-    "cancelledOrders": 50
+    "cancelledOrders": 50,
+    "totalProducts": 50,
+    "totalCustomers": 100
   }
 }
 ```
@@ -883,7 +893,7 @@ Authorization: Bearer {token}
 
 ## 智能问答接口
 
-### 1. 发送问题
+### 1. 发送问题（非流式）
 **接口地址**: `POST /api/ai/chat`
 
 **请求头**:
@@ -898,6 +908,12 @@ Authorization: Bearer {token}
   "conversationId": "conv_123456"
 }
 ```
+
+**参数说明**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| question | String | 是 | 用户问题 |
+| conversationId | String | 否 | 对话ID，不传则创建新对话 |
 
 **响应示例**:
 ```json
@@ -938,6 +954,12 @@ Accept: text/event-stream
 }
 ```
 
+**参数说明**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| question | String | 是 | 用户问题 |
+| conversationId | String | 否 | 对话ID，不传则创建新对话 |
+
 **响应格式**: Server-Sent Events (SSE)
 
 **事件类型**:
@@ -962,8 +984,39 @@ data:数据
 event:token
 data:分析
 
+event:token
+data:，
+
+event:token
+data:热销
+
+event:token
+data:商品
+
+event:token
+data:趋势
+
+event:token
+data:如下
+
+event:token
+data:...
+
 event:complete
-data:{"fullResponse":"根据数据分析，热销商品趋势如下...","tokenCount":150}
+data:{"fullResponse":"根据数据分析，热销商品趋势如下...","intent":"product_query","conversationId":"conv_123456","timestamp":1690000000000,"path":"SQL"}
+```
+
+**完成事件数据结构**:
+```json
+{
+  "fullResponse": "完整的AI回答",
+  "intent": "sales_query",
+  "conversationId": "conv_123456",
+  "timestamp": 1690000000000,
+  "path": "SQL",
+  "sql": "SELECT ...",
+  "data": [...]
+}
 ```
 
 **超时设置**: SSE连接超时时间为5分钟
@@ -985,18 +1038,20 @@ Authorization: Bearer {token}
     {
       "role": "user",
       "content": "本月销售额最高的销售是谁？",
-      "timestamp": 1690000000000
+      "intent": "sales_query",
+      "create_time": "2024-01-01 10:00:00"
     },
     {
       "role": "assistant",
       "content": "根据数据分析，本月销售额最高的销售是张三，总销售额为50000元，共完成25笔订单。",
-      "timestamp": 1690000000000
+      "intent": "sales_query",
+      "create_time": "2024-01-01 10:00:01"
     }
   ]
 }
 ```
 
-### 5. 清除对话历史
+### 4. 清除对话历史
 **接口地址**: `DELETE /api/ai/conversation/{conversationId}`
 
 **请求头**:
@@ -1013,82 +1068,8 @@ Authorization: Bearer {token}
 }
 ```
 
-## RAG文档问答接口
-
-### 1. 上传并处理文档
-**接口地址**: `POST /api/rag/documents`
-
-**请求头**:
-```
-Authorization: Bearer {token}
-```
-
-**请求参数**:
-```json
-{
-  "title": "销售管理系统使用指南",
-  "content": "# 概述\n本系统是一个企业级销售管理系统...",
-  "metadata": "guide,manual"
-}
-```
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "message": "文档上传处理成功",
-  "data": {
-    "success": true,
-    "sourceDocId": 1,
-    "chunkCount": 15,
-    "message": "文档已成功处理为15个文本块"
-  }
-}
-```
-
-### 2. 语义问答
-**接口地址**: `POST /api/rag/query`
-
-**请求头**:
-```
-Authorization: Bearer {token}
-```
-
-**请求参数**:
-```json
-{
-  "question": "如何创建新订单？",
-  "topK": 3
-}
-```
-
-**参数说明**:
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| question | String | 是 | 用户问题 |
-| topK | Integer | 否 | 返回相关文档块数量，默认3 |
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "message": "问答成功",
-  "data": {
-    "success": true,
-    "answer": "创建新订单的步骤：1. 进入订单管理页面 2. 点击"新建订单"按钮 3. 填写客户信息和商品信息 4. 提交订单",
-    "sources": [
-      {
-        "content": "订单创建流程说明...",
-        "score": 0.95,
-        "sourceTitle": "销售管理系统使用指南"
-      }
-    ]
-  }
-}
-```
-
-### 3. 获取文档块信息
-**接口地址**: `GET /api/rag/documents/{sourceDocId}/chunks`
+### 5. 获取所有对话列表
+**接口地址**: `GET /api/ai/conversations`
 
 **请求头**:
 ```
@@ -1102,29 +1083,50 @@ Authorization: Bearer {token}
   "message": "获取成功",
   "data": [
     {
-      "id": 1,
-      "content": "文档块内容...",
-      "chunkIndex": 0,
-      "metadata": "guide"
+      "conversation_id": "conv_123456",
+      "last_message_time": "2024-01-01 10:00:01",
+      "message_count": 2,
+      "last_message": "根据数据分析，本月销售额最高的销售是张三..."
     }
   ]
 }
 ```
 
-### 4. 删除文档
-**接口地址**: `DELETE /api/rag/documents/{sourceDocId}`
+### 6. 分析数据
+**接口地址**: `POST /api/ai/analyze`
 
 **请求头**:
 ```
 Authorization: Bearer {token}
 ```
 
+**请求参数**:
+```json
+{
+  "question": "分析一下这些数据的趋势",
+  "data": [
+    {
+      "date": "2024-01-01",
+      "sales": 10000
+    },
+    {
+      "date": "2024-01-02",
+      "sales": 15000
+    }
+  ]
+}
+```
+
 **响应示例**:
 ```json
 {
   "code": 200,
-  "message": "删除成功",
-  "data": null
+  "message": "分析成功",
+  "data": {
+    "analysis": "根据数据分析，销售呈上升趋势，1月2日比1月1日增长了50%。",
+    "data": [...],
+    "timestamp": 1690000000000
+  }
 }
 ```
 
@@ -1180,211 +1182,6 @@ Content-Type: multipart/form-data
 }
 ```
 
-## Markdown文档管理接口
-
-**说明**: Markdown文档用于智能问答模块的RAG功能，仅支持Markdown格式文件。
-
-### 1. 获取文档列表
-**接口地址**: `GET /api/markdown-documents`
-
-**请求参数**:
-- `page`: 页码（默认1）
-- `size`: 每页数量（默认10）
-- `keyword`: 搜索关键词（可选）
-
-**请求头**:
-```
-Authorization: Bearer {token}
-```
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "message": "获取成功",
-  "data": {
-    "records": [
-      {
-        "id": 1,
-        "title": "销售管理系统使用指南",
-        "fileName": "user-guide.md",
-        "ossUrl": "https://oss-cn-hangzhou.aliyuncs.com/monster060508/markdown/user-guide.md",
-        "fileSize": 1024,
-        "uploadUserId": 1,
-        "createTime": "2024-01-01 10:00:00"
-      }
-    ],
-    "total": 10,
-    "size": 10,
-    "current": 1,
-    "pages": 1
-  }
-}
-```
-
-### 2. 获取文档详情
-**接口地址**: `GET /api/markdown-documents/{id}`
-
-**请求头**:
-```
-Authorization: Bearer {token}
-```
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "message": "获取成功",
-  "data": {
-    "id": 1,
-    "title": "销售管理系统使用指南",
-    "fileName": "user-guide.md",
-    "ossUrl": "https://oss-cn-hangzhou.aliyuncs.com/monster060508/markdown/user-guide.md",
-    "content": "# 销售管理系统使用指南\n\n## 概述\n本系统是一个企业级销售管理系统...",
-    "fileSize": 1024,
-    "uploadUserId": 1,
-    "createTime": "2024-01-01 10:00:00",
-    "updateTime": "2024-01-01 10:00:00"
-  }
-}
-```
-
-### 3. 上传Markdown文档
-**接口地址**: `POST /api/markdown-documents`
-
-**请求头**:
-```
-Authorization: Bearer {token}
-```
-
-**请求参数**:
-```json
-{
-  "title": "销售管理系统使用指南",
-  "fileName": "user-guide.md",
-  "ossUrl": "https://oss-cn-hangzhou.aliyuncs.com/monster060508/markdown/user-guide.md",
-  "content": "# 销售管理系统使用指南\n\n## 概述\n本系统是一个企业级销售管理系统...",
-  "fileSize": 1024,
-  "uploadUserId": 1
-}
-```
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "message": "上传成功",
-  "data": {
-    "id": 1,
-    "title": "销售管理系统使用指南",
-    "fileName": "user-guide.md",
-    "ossUrl": "https://oss-cn-hangzhou.aliyuncs.com/monster060508/markdown/user-guide.md",
-    "content": "# 销售管理系统使用指南\n\n## 概述\n本系统是一个企业级销售管理系统...",
-    "fileSize": 1024,
-    "uploadUserId": 1,
-    "createTime": "2024-01-01 10:00:00"
-  }
-}
-```
-
-### 4. 更新Markdown文档
-**接口地址**: `PUT /api/markdown-documents/{id}`
-
-**请求头**:
-```
-Authorization: Bearer {token}
-```
-
-**请求参数**:
-```json
-{
-  "title": "销售管理系统使用指南（更新版）",
-  "content": "# 销售管理系统使用指南\n\n## 概述\n本系统是一个企业级销售管理系统（更新版）..."
-}
-```
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "message": "更新成功",
-  "data": {
-    "id": 1,
-    "title": "销售管理系统使用指南（更新版）",
-    "fileName": "user-guide.md",
-    "ossUrl": "https://oss-cn-hangzhou.aliyuncs.com/monster060508/markdown/user-guide.md",
-    "content": "# 销售管理系统使用指南\n\n## 概述\n本系统是一个企业级销售管理系统（更新版）...",
-    "fileSize": 1024,
-    "uploadUserId": 1,
-    "createTime": "2024-01-01 10:00:00",
-    "updateTime": "2024-01-01 12:00:00"
-  }
-}
-```
-
-### 5. 删除Markdown文档
-**接口地址**: `DELETE /api/markdown-documents/{id}`
-
-**请求头**:
-```
-Authorization: Bearer {token}
-```
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "message": "删除成功",
-  "data": null
-}
-```
-
-### 6. 获取文档内容
-**接口地址**: `GET /api/markdown-documents/{id}/content`
-
-**请求头**:
-```
-Authorization: Bearer {token}
-```
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "message": "获取成功",
-  "data": {
-    "content": "# 销售管理系统使用指南\n\n## 概述\n本系统是一个企业级销售管理系统..."
-  }
-}
-```
-
-### 7. 根据用户获取文档列表
-**接口地址**: `GET /api/markdown-documents/user/{userId}`
-
-**请求头**:
-```
-Authorization: Bearer {token}
-```
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "message": "获取成功",
-  "data": [
-    {
-      "id": 1,
-      "title": "销售管理系统使用指南",
-      "fileName": "user-guide.md",
-      "ossUrl": "https://oss-cn-hangzhou.aliyuncs.com/monster060508/markdown/user-guide.md",
-      "fileSize": 1024,
-      "uploadUserId": 1,
-      "createTime": "2024-01-01 10:00:00"
-    }
-  ]
-}
-```
-
 ## 错误处理
 
 ### 错误响应格式
@@ -1393,24 +1190,34 @@ Authorization: Bearer {token}
   "code": 400,
   "message": "请求参数错误",
   "data": null,
-  "timestamp": 1690000000000,
-  "errors": [
-    {
-      "field": "username",
-      "message": "用户名不能为空"
-    }
-  ]
+  "timestamp": 1690000000000
 }
 ```
 
 ### 常见错误码
-- `400001`: 请求参数校验失败
-- `401001`: 用户名或密码错误
-- `401002`: Token已过期
-- `401003`: Token无效
-- `403001`: 权限不足
-- `404001`: 资源不存在
-- `500001`: 服务器内部错误
+- `400`: 请求参数错误
+- `401`: 未认证或Token已过期
+- `403`: 权限不足
+- `404`: 资源不存在
+- `500`: 服务器内部错误
+
+### 认证错误示例
+```json
+{
+  "code": 401,
+  "message": "未认证，请先登录",
+  "data": null
+}
+```
+
+### 权限错误示例
+```json
+{
+  "code": 403,
+  "message": "权限不足，无法执行此操作",
+  "data": null
+}
+```
 
 ## 分页查询参数
 
@@ -1429,6 +1236,12 @@ Authorization: Bearer {token}
 }
 ```
 
+### 分页参数示例
+```
+GET /api/products?page=1&size=20
+GET /api/orders?page=2&size=10&status=COMPLETED
+```
+
 ## 数据过滤参数
 
 ### 日期范围过滤
@@ -1439,24 +1252,25 @@ Authorization: Bearer {token}
 - `keyword`: 搜索关键词
 
 ### 状态过滤
-- `status`: 状态值
+- `status`: 状态值（PENDING/IN_PROGRESS/COMPLETED/CANCELLED）
 
-## 接口限流
+### 角色过滤
+- `role`: 角色值（ADMIN/SALES）
 
-### 限流规则
-- 普通接口：100次/分钟
-- 文件上传接口：10次/分钟
-- AI接口：20次/分钟
+## 智能问答意图类型
 
-### 限流响应
-```json
-{
-  "code": 429,
-  "message": "请求过于频繁，请稍后再试",
-  "data": null,
-  "timestamp": 1690000000000
-}
-```
+系统支持以下意图类型：
+
+| 意图类型 | 说明 | 示例问题 |
+|----------|------|----------|
+| sales_query | 销售数据查询 | "本月销售额最高的销售是谁？" |
+| product_query | 商品数据查询 | "哪些商品销量最好？" |
+| order_query | 订单数据查询 | "本月有多少订单？" |
+| employee_query | 员工数据查询 | "张三的业绩怎么样？" |
+| statistics | 统计分析 | "本月销售总额是多少？" |
+| comparison | 对比分析 | "本月和上月销售对比如何？" |
+| trend | 趋势分析 | "销售趋势如何？" |
+| general | 通用问答 | "你好"、"系统有什么功能？" |
 
 ## 接口版本控制
 
@@ -1471,18 +1285,25 @@ Authorization: Bearer {token}
 ## 接口文档更新
 
 ### 文档版本
-- 文档版本：1.1.0
-- 最后更新：2024-12-23
+- 文档版本：2.0.0
+- 最后更新：2026-06-27
 
 ### 更新记录
-1. **v1.1.0** (2024-12-23)
+1. **v2.0.0** (2026-06-27)
+   - 移除已废弃的Markdown文档管理接口
+   - 移除已废弃的RAG文档问答接口
+   - 更新智能问答接口文档，添加流式输出详细说明
+   - 添加意图类型说明
+   - 优化文档结构
+
+2. **v1.1.0** (2024-12-23)
    - 新增JWT认证详细说明
    - 新增SSE流式聊天接口文档
    - 新增用户创建参数验证规则
    - 修复角色值说明 (ADMIN/SALES)
    - 优化错误响应格式说明
 
-2. **v1.0.0** (2024-01-01)
+3. **v1.0.0** (2024-01-01)
    - 初始版本
    - 包含所有核心接口
 
