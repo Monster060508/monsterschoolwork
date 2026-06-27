@@ -170,6 +170,7 @@ export const aiApi = {
   // SSE流式聊天
   chatStream: (data: { question: string; conversationId?: string }, onToken: (token: string) => void, onComplete: (response: any) => void, onError: (error: string) => void) => {
     const userStore = useUserStore()
+    let completed = false
     
     fetch('/api/ai/chat/stream', {
       method: 'POST',
@@ -186,59 +187,77 @@ export const aiApi = {
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
+      let currentEvent = ''
       
       const processStream = () => {
         reader?.read().then(({ done, value }) => {
           if (done) {
+            // 流结束时，如果还没收到complete事件，手动触发完成
+            if (!completed) {
+              completed = true
+              onComplete({ conversationId: data.conversationId })
+            }
             return
           }
           
           buffer += decoder.decode(value, { stream: true })
           
-          // 处理SSE事件
-          const lines = buffer.split('\n')
-          buffer = lines.pop() || ''
+          // 处理SSE事件 - 用双换行分割事件块
+          const events = buffer.split('\n\n')
+          buffer = events.pop() || ''
           
-          let currentEvent = ''
-          
-          for (const line of lines) {
-            if (line.startsWith('event:')) {
-              currentEvent = line.substring(6).trim()
-            } else if (line.startsWith('data:')) {
-              const data = line.substring(5).trim()
-              
+          for (const event of events) {
+            const lines = event.split('\n')
+            let eventType = ''
+            let eventData = ''
+            
+            for (const line of lines) {
+              if (line.startsWith('event:')) {
+                eventType = line.substring(6).trim()
+              } else if (line.startsWith('data:')) {
+                eventData = line.substring(5).trim()
+              }
+            }
+            
+            if (eventData) {
               try {
-                switch (currentEvent) {
+                switch (eventType) {
                   case 'token':
-                    onToken(data)
+                    onToken(eventData)
                     break
                   case 'complete':
-                    onComplete(JSON.parse(data))
+                    completed = true
+                    onComplete(JSON.parse(eventData))
                     break
                   case 'error':
-                    onError(data)
+                    completed = true
+                    onError(eventData)
                     break
                   case 'conversationId':
-                    // 对话ID已在data中
+                    // 对话ID已包含在complete事件中
                     break
                 }
               } catch (e) {
-                console.error('解析SSE数据失败:', e, data)
+                console.error('解析SSE数据失败:', e, eventData)
               }
-              
-              currentEvent = ''
             }
           }
           
           processStream()
         }).catch(error => {
-          onError(error.message)
+          if (!completed) {
+            completed = true
+            onError(error.message)
+          }
         })
       }
       
       processStream()
     }).catch(error => {
-      onError(error.message)
+      if (!completed) {
+        completed = true
+        onError(error.message)
+      }
     })
   },
   
