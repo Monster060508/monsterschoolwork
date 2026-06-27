@@ -15,8 +15,8 @@ cd /d "%~dp0backend"
 start "后端服务" cmd /c "mvn spring-boot:run"
 
 :: 等待后端启动
-echo 等待后端服务启动（约30秒）...
-timeout /t 30 /nobreak >nul
+echo 等待后端服务启动（约5秒）...
+timeout /t 5 /nobreak >nul
 
 :: 启动前端
 echo [2/2] 启动前端服务...

@@ -29,6 +29,9 @@ public class Product {
     @TableField("image_url")
     private String imageUrl;
     
+    @TableField("category")
+    private String category;
+    
     @TableField("create_time")
     private LocalDateTime createTime;
     

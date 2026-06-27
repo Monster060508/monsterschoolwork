@@ -171,6 +171,11 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     
     @Override
     public List<Product> getProducts(int page, int size, String keyword) {
+        return getProducts(page, size, keyword, null);
+    }
+    
+    @Override
+    public List<Product> getProducts(int page, int size, String keyword, String category) {
         QueryWrapper<Product> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("deleted", 0);
         
@@ -180,6 +185,10 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
                 .or()
                 .like("description", keyword)
             );
+        }
+        
+        if (category != null && !category.isEmpty()) {
+            queryWrapper.eq("category", category);
         }
         
         queryWrapper.orderByDesc("create_time");
@@ -193,6 +202,11 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     
     @Override
     public long getProductCount(String keyword) {
+        return getProductCount(keyword, null);
+    }
+    
+    @Override
+    public long getProductCount(String keyword, String category) {
         QueryWrapper<Product> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("deleted", 0);
         
@@ -202,6 +216,10 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
                 .or()
                 .like("description", keyword)
             );
+        }
+        
+        if (category != null && !category.isEmpty()) {
+            queryWrapper.eq("category", category);
         }
         
         return count(queryWrapper);

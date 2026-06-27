@@ -49,8 +49,8 @@ echo 正在启动后端服务...
 start "后端服务" cmd /c "mvn spring-boot:run"
 
 :: 等待后端启动
-echo 等待后端服务启动（约30秒）...
-timeout /t 30 /nobreak >nul
+echo 等待后端服务启动（约5秒）...
+timeout /t 5 /nobreak >nul
 
 echo.
 echo [2/2] 启动前端服务...
@@ -227,10 +227,9 @@ echo 可用的测试:
 echo.
 echo 1. 运行后端单元测试
 echo 2. 运行API集成测试
-echo 3. 运行RAG测试
-echo 4. 返回主菜单
+echo 3. 返回主菜单
 echo.
-set /p test_choice=请选择测试 (1-4): 
+set /p test_choice=请选择测试 (1-3): 
 
 if "%test_choice%"=="1" (
     cd /d "%~dp0backend"
@@ -241,11 +240,7 @@ if "%test_choice%"=="2" (
     echo 运行API集成测试...
     python test_all_api.py
 )
-if "%test_choice%"=="3" (
-    echo 运行RAG测试...
-    python test_rag_pipeline.py
-)
-if "%test_choice%"=="4" goto menu
+if "%test_choice%"=="3" goto menu
 
 echo.
 pause

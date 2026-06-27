@@ -43,12 +43,6 @@ const routes: RouteRecordRaw[] = [
         name: 'AIChat',
         component: () => import('@/views/ai-chat/index.vue'),
         meta: { title: '智能问答', icon: 'ChatDotRound' }
-      },
-      {
-        path: 'markdown-docs',
-        name: 'MarkdownDocs',
-        component: () => import('@/views/markdown-docs/index.vue'),
-        meta: { title: '文档管理', icon: 'Document', roles: ['ADMIN'] }
       }
     ]
   },

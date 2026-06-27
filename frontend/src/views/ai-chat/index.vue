@@ -66,17 +66,6 @@
       <!-- 输入区域 -->
       <div class="chat-input">
         <div class="input-toolbar">
-          <el-tooltip content="传统RAG文档问答">
-            <el-button 
-              :type="chatMode === 'rag' ? 'primary' : 'default'" 
-              size="small" 
-              @click="chatMode = 'rag'"
-            >
-              <el-icon><Document /></el-icon>
-              RAG问答
-            </el-button>
-          </el-tooltip>
-          
           <el-tooltip content="数据库查询分析">
             <el-button 
               :type="chatMode === 'sql' ? 'primary' : 'default'" 
@@ -179,7 +168,7 @@ const userInfo = reactive({
 
 // 聊天相关
 const inputMessage = ref('')
-const chatMode = ref<'rag' | 'sql' | 'auto'>('auto')
+const chatMode = ref<'sql' | 'auto'>('auto')
 const loading = ref(false)
 const streamingActive = ref(false)
 const chatMessagesRef = ref()
@@ -202,24 +191,146 @@ const conversations = ref<Array<{
 
 const currentConversationId = ref('')
 
-// 格式化消息（支持简单的Markdown）
+// 格式化消息（支持Markdown）
 const formatMessage = (content: string) => {
   if (!content) return ''
   
-  // 简单的Markdown格式化
-  let formatted = content
-    // 代码块
-    .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
-    // 行内代码
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    // 粗体
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    // 斜体
-    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-    // 换行
-    .replace(/\n/g, '<br>')
+  // 1. 先提取代码块，避免被解析
+  const codeBlocks: string[] = []
+  let formatted = content.replace(/```(\w*)\n([\s\S]*?)```/g, (_match, lang, code) => {
+    const index = codeBlocks.length
+    const languageClass = lang ? ` class="language-${lang}"` : ''
+    codeBlocks.push(`<pre><code${languageClass}>${escapeHtml(code.trim())}</code></pre>`)
+    return `\n__CODE_BLOCK_${index}__\n`
+  })
   
-  return formatted
+  // 2. 提取行内代码
+  const inlineCodes: string[] = []
+  formatted = formatted.replace(/`([^`]+)`/g, (_match, code) => {
+    const index = inlineCodes.length
+    inlineCodes.push(`<code>${escapeHtml(code)}</code>`)
+    return `__INLINE_CODE_${index}__`
+  })
+  
+  // 3. 逐行处理Markdown
+  const lines = formatted.split('\n')
+  const outputLines: string[] = []
+  let inOrderedList = false
+  let inUnorderedList = false
+  
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i]
+    
+    // 检查是否是代码块占位符
+    if (line.trim().match(/^__CODE_BLOCK_\d+__$/)) {
+      if (inOrderedList) { outputLines.push('</ol>'); inOrderedList = false }
+      if (inUnorderedList) { outputLines.push('</ul>'); inUnorderedList = false }
+      outputLines.push(line.trim())
+      continue
+    }
+    
+    // 转义HTML
+    line = escapeHtml(line)
+    
+    // 标题
+    const headingMatch = line.match(/^(#{1,6})\s+(.+)$/)
+    if (headingMatch) {
+      if (inOrderedList) { outputLines.push('</ol>'); inOrderedList = false }
+      if (inUnorderedList) { outputLines.push('</ul>'); inUnorderedList = false }
+      const level = headingMatch[1].length
+      outputLines.push(`<h${level}>${headingMatch[2]}</h${level}>`)
+      continue
+    }
+    
+    // 无序列表
+    const ulMatch = line.match(/^\s*[-*]\s+(.+)$/)
+    if (ulMatch) {
+      if (inOrderedList) { outputLines.push('</ol>'); inOrderedList = false }
+      if (!inUnorderedList) { outputLines.push('<ul>'); inUnorderedList = true }
+      outputLines.push(`<li>${applyInlineFormatting(ulMatch[1])}</li>`)
+      continue
+    }
+    
+    // 有序列表
+    const olMatch = line.match(/^\s*\d+\.\s+(.+)$/)
+    if (olMatch) {
+      if (inUnorderedList) { outputLines.push('</ul>'); inUnorderedList = false }
+      if (!inOrderedList) { outputLines.push('<ol>'); inOrderedList = true }
+      outputLines.push(`<li>${applyInlineFormatting(olMatch[1])}</li>`)
+      continue
+    }
+    
+    // 引用块
+    const blockquoteMatch = line.match(/^&gt;\s*(.+)$/)
+    if (blockquoteMatch) {
+      if (inOrderedList) { outputLines.push('</ol>'); inOrderedList = false }
+      if (inUnorderedList) { outputLines.push('</ul>'); inUnorderedList = false }
+      outputLines.push(`<blockquote>${applyInlineFormatting(blockquoteMatch[1])}</blockquote>`)
+      continue
+    }
+    
+    // 水平线
+    if (line.match(/^---+$/)) {
+      if (inOrderedList) { outputLines.push('</ol>'); inOrderedList = false }
+      if (inUnorderedList) { outputLines.push('</ul>'); inUnorderedList = false }
+      outputLines.push('<hr>')
+      continue
+    }
+    
+    // 关闭列表
+    if (line.trim() === '') {
+      if (inOrderedList) { outputLines.push('</ol>'); inOrderedList = false }
+      if (inUnorderedList) { outputLines.push('</ul>'); inUnorderedList = false }
+      continue
+    }
+    
+    // 普通段落
+    if (inOrderedList) { outputLines.push('</ol>'); inOrderedList = false }
+    if (inUnorderedList) { outputLines.push('</ul>'); inUnorderedList = false }
+    outputLines.push(applyInlineFormatting(line))
+  }
+  
+  // 关闭未关闭的列表
+  if (inOrderedList) outputLines.push('</ol>')
+  if (inUnorderedList) outputLines.push('</ul>')
+  
+  // 4. 用<br>连接行，还原代码块和行内代码
+  let result = outputLines.join('<br>')
+  
+  // 还原代码块和行内代码
+  result = result.replace(/__CODE_BLOCK_(\d+)__/g, (_match, index) => codeBlocks[parseInt(index)])
+  result = result.replace(/__INLINE_CODE_(\d+)__/g, (_match, index) => inlineCodes[parseInt(index)])
+  
+  // 5. 清理多余的<br>标签
+  result = result.replace(/<br><br>/g, '<br>')
+  result = result.replace(/<br><\/(h[1-6]|blockquote|pre|ul|ol|li|hr)>/g, '</$1>')
+  result = result.replace(/<(h[1-6]|blockquote|pre|ul|ol|li|hr)><br>/g, '<$1>')
+  
+  return result
+}
+
+// 应用行内Markdown格式（粗体、斜体、链接等）
+const applyInlineFormatting = (text: string) => {
+  let result = text
+  // 粗体
+  result = result.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+  // 斜体
+  result = result.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+  // 链接
+  result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+  // 图片
+  result = result.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%;">')
+  return result
+}
+
+// HTML转义函数
+const escapeHtml = (text: string) => {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
 }
 
 // 复制消息
@@ -722,5 +833,115 @@ onMounted(() => {
 .message-body :deep(em) {
   font-style: italic;
   color: #666;
+}
+
+/* 标题样式 */
+.message-body :deep(h1),
+.message-body :deep(h2),
+.message-body :deep(h3),
+.message-body :deep(h4),
+.message-body :deep(h5),
+.message-body :deep(h6) {
+  margin: 15px 0 10px 0;
+  color: #2c3e50;
+  line-height: 1.4;
+}
+
+.message-body :deep(h1) {
+  font-size: 1.6em;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 8px;
+}
+
+.message-body :deep(h2) {
+  font-size: 1.4em;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 6px;
+}
+
+.message-body :deep(h3) {
+  font-size: 1.2em;
+}
+
+.message-body :deep(h4) {
+  font-size: 1.1em;
+}
+
+.message-body :deep(h5) {
+  font-size: 1em;
+}
+
+.message-body :deep(h6) {
+  font-size: 0.9em;
+  color: #666;
+}
+
+/* 列表样式 */
+.message-body :deep(ul),
+.message-body :deep(ol) {
+  margin: 10px 0;
+  padding-left: 25px;
+}
+
+.message-body :deep(li) {
+  margin: 5px 0;
+  line-height: 1.6;
+}
+
+/* 链接样式 */
+.message-body :deep(a) {
+  color: #409eff;
+  text-decoration: none;
+}
+
+.message-body :deep(a:hover) {
+  text-decoration: underline;
+}
+
+/* 引用块样式 */
+.message-body :deep(blockquote) {
+  margin: 10px 0;
+  padding: 10px 15px;
+  border-left: 4px solid #409eff;
+  background: #f8f9fa;
+  color: #666;
+}
+
+/* 水平线样式 */
+.message-body :deep(hr) {
+  margin: 15px 0;
+  border: none;
+  border-top: 1px solid #eee;
+}
+
+/* 图片样式 */
+.message-body :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+/* 表格样式 */
+.message-body :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 10px 0;
+}
+
+.message-body :deep(th),
+.message-body :deep(td) {
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.message-body :deep(th) {
+  background: #f5f7fa;
+  font-weight: bold;
+}
+
+.message-body :deep(tr:nth-child(even)) {
+  background: #f9f9f9;
 }
 </style>

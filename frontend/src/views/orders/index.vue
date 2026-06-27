@@ -61,7 +61,7 @@
           <el-button size="small" type="primary" @click="editOrder(row)">编辑</el-button>
           <el-button size="small" type="success" @click="downloadOrderPdf(row)">下载PDF</el-button>
           <el-button 
-            v-if="row.status === 'PENDING' || row.status === 'PROCESSING'"
+            v-if="row.status === 'PENDING' || row.status === 'IN_PROGRESS'"
             size="small" 
             type="warning" 
             @click="updateOrderStatus(row)"
@@ -119,7 +119,7 @@
         </el-form-item>
         
         <el-form-item label="商品数量" prop="quantity">
-          <el-input-number v-model="orderForm.quantity" :min="1" :max="currentProduct.stock || 999" style="width: 100%;" />
+          <el-input-number v-model="orderForm.quantity" :min="1" :max="currentProduct.stockQuantity || 999" style="width: 100%;" />
         </el-form-item>
         
         <el-form-item label="订单金额" prop="amount">
@@ -395,17 +395,40 @@ const showAddDialog = () => {
 }
 
 // 显示编辑对话框
-const editOrder = (row: any) => {
+const editOrder = async (row: any) => {
   dialogType.value = 'edit'
   // 只映射表单需要的字段，避免字段名不匹配
   orderForm.id = row.id
   orderForm.customerName = row.customerName
   orderForm.salesId = row.salespersonId
-  orderForm.productId = row.productId || null
-  orderForm.quantity = row.quantity || 1
   orderForm.amount = row.totalAmount || 0
   orderForm.status = row.status
   orderForm.remark = row.remark || ''
+  
+  // 加载订单项信息
+  try {
+    const itemsResponse = await orderApi.getOrderItems(row.id)
+    if (itemsResponse.code === 200 && itemsResponse.data && itemsResponse.data.length > 0) {
+      const firstItem = itemsResponse.data[0]
+      orderForm.productId = firstItem.productId || null
+      orderForm.quantity = firstItem.quantity || 1
+      // 设置当前商品信息
+      if (firstItem.productId) {
+        const product = products.value.find((p: any) => p.id === firstItem.productId)
+        if (product) {
+          currentProduct.value = product
+        }
+      }
+    } else {
+      orderForm.productId = null
+      orderForm.quantity = 1
+    }
+  } catch (error) {
+    console.error('获取订单项失败:', error)
+    orderForm.productId = null
+    orderForm.quantity = 1
+  }
+  
   dialogVisible.value = true
 }
 
@@ -414,7 +437,8 @@ const viewOrder = async (row: any) => {
   try {
     const response = await orderApi.getOrder(row.id)
     if (response.code === 200) {
-      currentOrder.value = response.data
+      // 后端返回 {order: {...}, items: [...]}，需要取order对象
+      currentOrder.value = response.data.order || response.data
       viewDialogVisible.value = true
     } else {
       ElMessage.error(response.message || '获取订单详情失败')
@@ -428,27 +452,19 @@ const viewOrder = async (row: any) => {
 // 下载订单PDF
 const downloadOrderPdf = async (row: any) => {
   try {
-    ElMessage.info('正在生成PDF订单...')
-    
+    ElMessage.info('正在生成订单PDF...')
     const response = await orderApi.downloadOrderPdf(row.id)
-    
-    if (response.code === 200) {
-      // 创建下载链接
-      const blob = new Blob([response.data], { type: 'application/pdf' })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `订单_${row.orderNo}.pdf`
-      link.click()
-      window.URL.revokeObjectURL(url)
-      
-      ElMessage.success('PDF订单生成成功')
-    } else {
-      ElMessage.error(response.message || 'PDF订单生成失败')
-    }
+    const blob = new Blob([response], { type: 'application/pdf' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = '订单_' + (row.orderNo || row.id) + '.pdf'
+    link.click()
+    window.URL.revokeObjectURL(url)
+    ElMessage.success('PDF下载成功')
   } catch (error: any) {
-    console.error('PDF订单生成失败:', error)
-    ElMessage.error('PDF订单生成失败: ' + (error.message || '请检查网络连接'))
+    console.error('订单PDF生成失败:', error)
+    ElMessage.error('订单PDF生成失败: ' + (error.message || '请检查网络连接'))
   }
 }
 
@@ -500,9 +516,17 @@ const handleSubmit = async () => {
       }
       response = await orderApi.createOrder(requestData)
     } else {
+      // 编辑订单时也发送商品信息和状态
       const requestData = {
         customerName: orderForm.customerName,
-        salespersonId: orderForm.salesId
+        salespersonId: orderForm.salesId,
+        status: orderForm.status,
+        items: orderForm.productId ? [
+          {
+            productId: orderForm.productId,
+            quantity: orderForm.quantity
+          }
+        ] : []
       }
       response = await orderApi.updateOrder(orderForm.id, requestData)
     }

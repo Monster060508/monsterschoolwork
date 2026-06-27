@@ -1,8 +1,6 @@
 package com.enterprise.sales.service.impl;
 
-import com.enterprise.sales.entity.MarkdownDocument;
 import com.enterprise.sales.service.AIService;
-import com.enterprise.sales.service.MarkdownDocumentService;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -25,7 +23,6 @@ import java.util.concurrent.atomic.AtomicReference;
 public class AIServiceImpl implements AIService {
     
     private final JdbcTemplate jdbcTemplate;
-    private final MarkdownDocumentService markdownDocumentService;
     private final StreamingChatLanguageModel streamingChatModel;
     
     @Override
@@ -40,17 +37,7 @@ public class AIServiceImpl implements AIService {
             result.put("intent", intent);
             
             // 2. 根据意图选择处理路径
-            if (isRAGIntent(intent)) {
-                // RAG路径：文档检索 + 答案生成
-                List<Map<String, Object>> documents = searchDocuments(question, 5);
-                String context = buildContextFromDocuments(documents);
-                String answer = generateAnswer(question, context);
-                
-                result.put("answer", answer);
-                result.put("documents", documents);
-                result.put("path", "RAG");
-                
-            } else if (isSQLIntent(intent)) {
+            if (isSQLIntent(intent)) {
                 // SQL路径：SQL生成 + 数据库查询 + AI分析
                 String sql = generateSQL(question);
                 result.put("sql", sql);
@@ -187,32 +174,6 @@ public class AIServiceImpl implements AIService {
     }
     
     @Override
-    public List<Map<String, Object>> searchDocuments(String query, int topK) {
-        // 从Markdown文档表中检索
-        List<MarkdownDocument> documents = markdownDocumentService.searchByTitle(query);
-        
-        // 转换为Map格式
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (MarkdownDocument doc : documents) {
-            Map<String, Object> docMap = new HashMap<>();
-            docMap.put("id", doc.getId());
-            docMap.put("title", doc.getTitle());
-            docMap.put("content", doc.getContent());
-            docMap.put("fileName", doc.getFileName());
-            docMap.put("ossUrl", doc.getOssUrl());
-            docMap.put("createTime", doc.getCreateTime());
-            result.add(docMap);
-            
-            // 限制返回数量
-            if (result.size() >= topK) {
-                break;
-            }
-        }
-        
-        return result;
-    }
-    
-    @Override
     public String generateAnswer(String question, String context) {
         // 简化实现：基于模板生成回答
         // 实际应该调用大模型API
@@ -226,10 +187,6 @@ public class AIServiceImpl implements AIService {
     
     // 私有辅助方法
     
-    private boolean isRAGIntent(String intent) {
-        return Arrays.asList("general", "comparison", "trend").contains(intent);
-    }
-    
     private boolean isSQLIntent(String intent) {
         return Arrays.asList("sales_query", "product_query", "order_query", "employee_query", "statistics").contains(intent);
     }
@@ -241,16 +198,6 @@ public class AIServiceImpl implements AIService {
             }
         }
         return false;
-    }
-    
-    private String buildContextFromDocuments(List<Map<String, Object>> documents) {
-        StringBuilder context = new StringBuilder();
-        for (Map<String, Object> doc : documents) {
-            if (doc.containsKey("content")) {
-                context.append(doc.get("content").toString()).append("\n");
-            }
-        }
-        return context.toString();
     }
     
     private void saveConversationHistory(String conversationId, String role, String content, String intent) {
@@ -351,7 +298,7 @@ public class AIServiceImpl implements AIService {
     
     @Override
     public List<Map<String, Object>> getConversations() {
-        // 获取所有对话历史列表（按对话ID分组）
+        // 获取所有对话历史列表（按对话ID分组）- MySQL语法
         String sql = "SELECT conversation_id, MAX(create_time) as last_message_time, " +
                      "COUNT(*) as message_count, " +
                      "SUBSTRING_INDEX(GROUP_CONCAT(content ORDER BY create_time DESC), ',', 1) as last_message " +
@@ -368,15 +315,36 @@ public class AIServiceImpl implements AIService {
         
         try {
             // 1. 意图分析
-            String intent = analyzeIntent(question);
+            final String intent = analyzeIntent(question);
             
-            // 2. 获取对话历史
-            List<ChatMessage> messages = buildChatMessages(conversationId, question, intent);
+            // 2. 预先获取数据（SQL查询）
+            final String sqlQuery;
+            final List<Map<String, Object>> sqlData;
             
-            // 3. 保存用户消息
+            if (isSQLIntent(intent)) {
+                // 先执行SQL查询，获取真实数据
+                sqlQuery = generateSQL(question);
+                List<Map<String, Object>> tempData;
+                try {
+                    tempData = executeSQL(sqlQuery);
+                    log.info("SQL查询完成，返回{}条记录", tempData != null ? tempData.size() : 0);
+                } catch (Exception e) {
+                    log.error("SQL查询失败: {}", sqlQuery, e);
+                    tempData = new ArrayList<>();
+                }
+                sqlData = tempData;
+            } else {
+                sqlQuery = null;
+                sqlData = null;
+            }
+            
+            // 3. 构建包含真实数据的聊天消息
+            List<ChatMessage> messages = buildChatMessagesWithData(conversationId, question, intent, sqlData, sqlQuery);
+            
+            // 4. 保存用户消息
             saveConversationHistory(conversationId, "user", question, intent);
             
-            // 4. 流式调用大模型
+            // 5. 流式调用大模型
             AtomicReference<StringBuilder> fullResponse = new AtomicReference<>(new StringBuilder());
             
             // 使用langchain4j 0.25.0的流式API
@@ -400,17 +368,11 @@ public class AIServiceImpl implements AIService {
                     metadata.put("conversationId", conversationId);
                     metadata.put("timestamp", System.currentTimeMillis());
                     
-                    // 如果是SQL意图，附加SQL和数据信息
+                    // 附加数据信息
                     if (isSQLIntent(intent)) {
-                        String sql = generateSQL(question);
-                        List<Map<String, Object>> data = executeSQL(sql);
-                        metadata.put("sql", sql);
-                        metadata.put("data", data);
+                        metadata.put("sql", sqlQuery);
+                        metadata.put("data", sqlData != null ? sqlData : new ArrayList<>());
                         metadata.put("path", "SQL");
-                    } else if (isRAGIntent(intent)) {
-                        List<Map<String, Object>> documents = searchDocuments(question, 5);
-                        metadata.put("documents", documents);
-                        metadata.put("path", "RAG");
                     } else {
                         metadata.put("path", "GENERAL");
                     }
@@ -432,18 +394,19 @@ public class AIServiceImpl implements AIService {
     }
     
     /**
-     * 构建聊天消息列表
+     * 构建包含数据的聊天消息列表
      */
-    private List<ChatMessage> buildChatMessages(String conversationId, String question, String intent) {
+    private List<ChatMessage> buildChatMessagesWithData(String conversationId, String question, String intent, 
+                                                         List<Map<String, Object>> sqlData, String sqlQuery) {
         List<ChatMessage> messages = new ArrayList<>();
         
         // 系统提示词
-        String systemPrompt = buildSystemPrompt(intent);
+        String systemPrompt = buildSystemPromptWithData(intent, sqlData, sqlQuery);
         messages.add(new SystemMessage(systemPrompt));
         
-        // 获取历史对话（最近10轮）
+        // 获取历史对话（最近3轮，保持上下文简洁）
         List<Map<String, Object>> history = getConversationHistory(conversationId);
-        int start = Math.max(0, history.size() - 20); // 最近20条消息（10轮对话）
+        int start = Math.max(0, history.size() - 6); // 最近6条消息（3轮对话）
         
         for (int i = start; i < history.size(); i++) {
             Map<String, Object> msg = history.get(i);
@@ -451,8 +414,13 @@ public class AIServiceImpl implements AIService {
             String content = msg.get("content").toString();
             
             if ("user".equals(role)) {
+                // 用户消息直接加入
                 messages.add(new UserMessage(content));
             } else if ("assistant".equals(role)) {
+                // AI回复：截取摘要避免过长的SQL数据干扰
+                if (content.length() > 300) {
+                    content = content.substring(0, 300) + "...";
+                }
                 messages.add(new AiMessage(content));
             }
         }
@@ -464,38 +432,181 @@ public class AIServiceImpl implements AIService {
     }
     
     /**
-     * 构建系统提示词
+     * 构建包含数据的系统提示词
      */
-    private String buildSystemPrompt(String intent) {
+    private String buildSystemPromptWithData(String intent, List<Map<String, Object>> sqlData, String sqlQuery) {
         StringBuilder prompt = new StringBuilder();
-        prompt.append("你是企业销售管理系统的智能助手，专门帮助用户分析销售数据、查询订单信息、管理商品库存等。\n\n");
-        prompt.append("你的能力包括：\n");
-        prompt.append("1. 销售数据查询和分析\n");
-        prompt.append("2. 商品信息查询和库存管理\n");
-        prompt.append("3. 订单状态查询和统计\n");
-        prompt.append("4. 员工信息查询\n");
-        prompt.append("5. 数据趋势分析和对比\n\n");
         
-        switch (intent) {
-            case "sales_query":
-                prompt.append("当前用户正在查询销售数据，请提供详细的销售分析，包括销售额、订单数量、销售人员业绩等信息。");
-                break;
-            case "product_query":
-                prompt.append("当前用户正在查询商品信息，请提供商品库存、销量、价格等相关信息。");
-                break;
-            case "order_query":
-                prompt.append("当前用户正在查询订单信息，请提供订单状态、金额、客户信息等相关数据。");
-                break;
-            case "employee_query":
-                prompt.append("当前用户正在查询员工信息，请提供员工的基本信息和业绩数据。");
-                break;
-            case "statistics":
-                prompt.append("当前用户需要统计数据，请提供详细的统计分析和数据汇总。");
-                break;
-            default:
-                prompt.append("请根据用户的问题提供专业、准确的回答。如果涉及数据查询，请说明可以查询哪些数据。");
+        // 角色设定
+        prompt.append("你是企业销售管理系统的AI数据分析助手。\n\n");
+        
+        // 回答规范
+        prompt.append("## 回答规范\n");
+        prompt.append("- 使用自然流畅的中文，语句完整通顺\n");
+        prompt.append("- 用简洁的段落回答，不要罗列原始数据字段名\n");
+        prompt.append("- 将英文字段名翻译为中文后呈现给用户\n");
+        prompt.append("- 金额用"元"为单位，保留两位小数\n");
+        prompt.append("- 如果数据为空，告知用户暂无相关数据\n\n");
+        
+        // 如果有SQL数据，格式化后放入提示
+        if (isSQLIntent(intent) && sqlData != null && !sqlData.isEmpty()) {
+            prompt.append("## 查询结果\n");
+            prompt.append(formatDataForAI(sqlData));
+            prompt.append("\n\n请基于以上数据，用自然语言回答用户的问题。\n");
         }
         
         return prompt.toString();
     }
+    
+    /**
+     * 格式化数据为AI易读的中文文本
+     */
+    private String formatDataForAI(List<Map<String, Object>> data) {
+        if (data == null || data.isEmpty()) {
+            return "暂无数据";
+        }
+        
+        StringBuilder sb = new StringBuilder();
+        int maxRows = Math.min(10, data.size());
+        
+        for (int i = 0; i < maxRows; i++) {
+            Map<String, Object> row = data.get(i);
+            sb.append(i + 1).append(". ");
+            
+            List<String> parts = new ArrayList<>();
+            for (Map.Entry<String, Object> entry : row.entrySet()) {
+                String colName = formatColumnName(entry.getKey());
+                String value = formatCellValue(entry.getKey(), entry.getValue());
+                parts.add(colName + "：" + value);
+            }
+            sb.append(String.join("，", parts));
+            sb.append("\n");
+        }
+        
+        if (data.size() > maxRows) {
+            sb.append("（共").append(data.size()).append("条记录，仅展示前").append(maxRows).append("条）\n");
+        }
+        
+        return sb.toString();
+    }
+    
+    /**
+     * 格式化数据为易读的Markdown文本
+     */
+    private String formatDataForDisplay(List<Map<String, Object>> data) {
+        if (data == null || data.isEmpty()) {
+            return "无数据";
+        }
+        
+        StringBuilder sb = new StringBuilder();
+        
+        // 获取列名
+        Map<String, Object> firstRow = data.get(0);
+        List<String> columns = new ArrayList<>(firstRow.keySet());
+        
+        // 构建Markdown表格
+        // 表头
+        sb.append("| ");
+        for (String col : columns) {
+            sb.append(formatColumnName(col)).append(" | ");
+        }
+        sb.append("\n| ");
+        for (int i = 0; i < columns.size(); i++) {
+            sb.append("--- | ");
+        }
+        sb.append("\n");
+        
+        // 数据行（最多显示20行）
+        int maxRows = Math.min(20, data.size());
+        for (int i = 0; i < maxRows; i++) {
+            Map<String, Object> row = data.get(i);
+            sb.append("| ");
+            for (String col : columns) {
+                Object value = row.get(col);
+                sb.append(formatCellValue(col, value)).append(" | ");
+            }
+            sb.append("\n");
+        }
+        
+        if (data.size() > 20) {
+            sb.append("\n*（仅显示前20条，共").append(data.size()).append("条数据）*\n");
+        }
+        
+        return sb.toString();
+    }
+    
+    /**
+     * 格式化列名为中文
+     */
+    private String formatColumnName(String columnName) {
+        switch (columnName.toLowerCase()) {
+            case "order_no": return "订单号";
+            case "customer_name": return "客户";
+            case "total_amount": return "金额";
+            case "status": return "状态";
+            case "create_time": return "时间";
+            case "salesperson_name": return "销售人员";
+            case "order_count": return "订单数";
+            case "total_sales": return "销售额";
+            case "name": return "名称";
+            case "price": return "价格";
+            case "stock_quantity": return "库存";
+            case "sales_quantity": return "销量";
+            case "sales_amount": return "销售额";
+            case "count": return "数量";
+            case "role": return "角色";
+            default: return columnName;
+        }
+    }
+    
+    /**
+     * 格式化单元格值
+     */
+    private String formatCellValue(String column, Object value) {
+        if (value == null) {
+            return "-";
+        }
+        
+        String colLower = column.toLowerCase();
+        
+        // 金额格式化
+        if (colLower.contains("amount") || colLower.contains("price") || colLower.contains("sales")) {
+            try {
+                double num = Double.parseDouble(value.toString());
+                return String.format("¥%.2f", num);
+            } catch (NumberFormatException e) {
+                return value.toString();
+            }
+        }
+        
+        // 状态翻译
+        if ("status".equals(colLower)) {
+            switch (value.toString()) {
+                case "COMPLETED": return "已完成";
+                case "PENDING": return "待处理";
+                case "PROCESSING": return "处理中";
+                case "SHIPPED": return "已发货";
+                case "CANCELLED": return "已取消";
+                default: return value.toString();
+            }
+        }
+        
+        // 角色翻译
+        if ("role".equals(colLower)) {
+            switch (value.toString()) {
+                case "ADMIN": return "管理员";
+                case "SALES": return "销售";
+                case "MANAGER": return "经理";
+                default: return value.toString();
+            }
+        }
+        
+        // 时间格式化（截取到分钟）
+        if (colLower.contains("time") && value.toString().length() > 16) {
+            return value.toString().substring(0, 16);
+        }
+        
+        return value.toString();
+    }
+    
 }

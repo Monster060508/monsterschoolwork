@@ -31,6 +31,11 @@ api.interceptors.response.use(
   (response: AxiosResponse) => {
     const { data } = response
     
+    // 如果是blob类型的响应（如文件下载），直接返回整个response
+    if (response.config.responseType === 'blob') {
+      return data
+    }
+    
     // 如果响应成功
     if (data.code === 200) {
       return data
@@ -129,6 +134,7 @@ export const productApi = {
 export const orderApi = {
   getOrders: (params?: any) => api.get('/orders', { params }),
   getOrder: (id: number) => api.get(`/orders/${id}`),
+  getOrderItems: (id: number) => api.get(`/orders/${id}/items`),
   createOrder: (data: any) => api.post('/orders', data),
   updateOrder: (id: number, data: any) => api.put(`/orders/${id}`, data),
   deleteOrder: (id: number) => api.delete(`/orders/${id}`),
@@ -241,16 +247,6 @@ export const aiApi = {
   getConversations: () => api.get('/ai/conversations'),
   getIntents: () => api.get('/ai/intents'),
   analyzeData: (data: { question: string; data: any[] }) => api.post('/ai/analyze', data)
-}
-
-export const markdownDocumentApi = {
-  getDocuments: (params?: any) => api.get('/markdown-documents', { params }),
-  getDocument: (id: number) => api.get(`/markdown-documents/${id}`),
-  uploadDocument: (data: any) => api.post('/markdown-documents', data),
-  updateDocument: (id: number, data: any) => api.put(`/markdown-documents/${id}`, data),
-  deleteDocument: (id: number) => api.delete(`/markdown-documents/${id}`),
-  getDocumentContent: (id: number) => api.get(`/markdown-documents/${id}/content`),
-  getDocumentsByUser: (userId: number) => api.get(`/markdown-documents/user/${userId}`)
 }
 
 export default api

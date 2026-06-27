@@ -6,6 +6,7 @@ import com.enterprise.sales.service.PDFService;
 import com.enterprise.sales.service.ProductService;
 import com.enterprise.sales.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/overview")
 @RequiredArgsConstructor
@@ -104,15 +106,19 @@ public class OverviewController {
             byte[] pdfBytes = pdfService.generateOverviewPdf(statistics, salesRanking, hotProducts);
             
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDispositionFormData("attachment", "总览报表.docx");
+            // 设置PDF MIME类型
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            // 使用URLEncoder编码文件名，支持中文
+            String fileName = java.net.URLEncoder.encode("销售总览报表.pdf", "UTF-8").replace("+", "%20");
+            headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + fileName);
             headers.setContentLength(pdfBytes.length);
             
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfBytes);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(null);
+            log.error("导出总览报表失败", e);
+            return ResponseEntity.internalServerError().body(null);
         }
     }
     

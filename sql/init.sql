@@ -31,12 +31,14 @@ CREATE TABLE IF NOT EXISTS product (
     price DECIMAL(10,2) NOT NULL COMMENT '商品价格',
     stock_quantity INT NOT NULL DEFAULT 0 COMMENT '库存数量',
     image_url VARCHAR(500) COMMENT '商品图片URL',
+    category VARCHAR(50) DEFAULT '其他' COMMENT '商品分类',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     deleted INT DEFAULT 0 COMMENT '逻辑删除(0:未删除,1:已删除)',
     INDEX idx_name (name),
     INDEX idx_price (price),
     INDEX idx_stock (stock_quantity),
+    INDEX idx_category (category),
     INDEX idx_deleted (deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商品表';
 
@@ -169,11 +171,16 @@ CREATE TABLE IF NOT EXISTS vector_document (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '文档ID',
     title VARCHAR(200) NOT NULL COMMENT '文档标题',
     content TEXT NOT NULL COMMENT '文档内容',
-    embedding TEXT COMMENT '向量嵌入(JSON格式)',
-    metadata JSON COMMENT '元数据',
+    chunk_index INT DEFAULT 0 COMMENT '分块索引',
+    source_doc_id BIGINT COMMENT '源文档ID',
+    embedding_json TEXT COMMENT '向量嵌入(JSON格式)',
+    metadata TEXT COMMENT '元数据',
+    similarity_score DOUBLE COMMENT '相似度分数(查询时使用)',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    INDEX idx_title (title)
+    INDEX idx_title (title),
+    INDEX idx_source_doc_id (source_doc_id),
+    INDEX idx_chunk_index (chunk_index)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='向量文档表';
 
 -- 创建Markdown文档表（用于RAG）

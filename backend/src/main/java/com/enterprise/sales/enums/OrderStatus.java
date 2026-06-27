@@ -4,10 +4,10 @@ import com.baomidou.mybatisplus.annotation.EnumValue;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum OrderStatus {
-    PENDING("pending", "待处理"),
-    IN_PROGRESS("in_progress", "进行中"),
-    COMPLETED("completed", "已完成"),
-    CANCELLED("cancelled", "已取消");
+    PENDING("PENDING", "待处理"),
+    IN_PROGRESS("IN_PROGRESS", "进行中"),
+    COMPLETED("COMPLETED", "已完成"),
+    CANCELLED("CANCELLED", "已取消");
     
     @EnumValue
     private final String code;
@@ -18,11 +18,11 @@ public enum OrderStatus {
         this.description = description;
     }
     
+    @JsonValue
     public String getCode() {
         return code;
     }
     
-    @JsonValue
     public String getDescription() {
         return description;
     }

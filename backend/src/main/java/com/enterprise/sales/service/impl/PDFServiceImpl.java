@@ -1,12 +1,19 @@
 package com.enterprise.sales.service.impl;
 
 import com.enterprise.sales.entity.Order;
+import com.enterprise.sales.enums.OrderStatus;
 import com.enterprise.sales.service.PDFService;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.xwpf.usermodel.*;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDType0Font;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -19,26 +26,55 @@ public class PDFServiceImpl implements PDFService {
     
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     
+    // 表格布局常量
+    private static final float MARGIN_LEFT = 50;
+    private static final float MARGIN_TOP = 50;
+    private static final float TABLE_WIDTH = 500;
+    private static final float ROW_HEIGHT = 25;
+    private static final float COL1_WIDTH = 150;
+    private static final float COL2_WIDTH = 350;
+    
     @Override
     public byte[] generateOrderPdf(Order order) {
-        try (XWPFDocument document = new XWPFDocument()) {
-            // 创建标题
-            XWPFParagraph titleParagraph = document.createParagraph();
-            titleParagraph.setAlignment(ParagraphAlignment.CENTER);
-            XWPFRun titleRun = titleParagraph.createRun();
-            titleRun.setText("企业销售管理系统 - 订单详情");
-            titleRun.setBold(true);
-            titleRun.setFontSize(18);
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage(PDRectangle.A4);
+            document.addPage(page);
             
-            // 创建空行
-            document.createParagraph();
+            // 加载中文字体
+            PDType0Font font = loadChineseFont(document);
             
-            // 订单基本信息
-            createOrderInfoSection(document, order);
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                float y = page.getMediaBox().getHeight() - MARGIN_TOP;
+                
+                // 标题
+                y = drawTitle(cs, font, "企业销售管理系统 - 订单详情", y, 18);
+                y -= 20;
+                
+                // 分隔线
+                y = drawLine(cs, y);
+                y -= 20;
+                
+                // 订单信息表格
+                y = drawSectionTitle(cs, font, "订单信息", y, 14);
+                y -= 10;
+                
+                String[][] tableData = {
+                    {"订单编号", order.getOrderNo() != null ? order.getOrderNo() : "N/A"},
+                    {"客户名称", order.getCustomerName() != null ? order.getCustomerName() : "N/A"},
+                    {"订单金额", "CNY " + (order.getTotalAmount() != null ? order.getTotalAmount() : BigDecimal.ZERO)},
+                    {"订单状态", getStatusText(order.getStatus())},
+                    {"下单时间", order.getCreateTime() != null ? order.getCreateTime().format(DATE_FORMATTER) : "N/A"},
+                    {"更新时间", order.getUpdateTime() != null ? order.getUpdateTime().format(DATE_FORMATTER) : "N/A"}
+                };
+                
+                y = drawTable(cs, font, tableData, y);
+                
+                // 页脚
+                drawFooter(cs, font, page);
+            }
             
-            // 输出PDF
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            document.write(outputStream);
+            document.save(outputStream);
             return outputStream.toByteArray();
             
         } catch (Exception e) {
@@ -49,38 +85,96 @@ public class PDFServiceImpl implements PDFService {
     
     @Override
     public byte[] generateOverviewPdf(Map<String, Object> statistics, List<Map<String, Object>> salesRanking, List<Map<String, Object>> hotProducts) {
-        try (XWPFDocument document = new XWPFDocument()) {
-            // 创建标题
-            XWPFParagraph titleParagraph = document.createParagraph();
-            titleParagraph.setAlignment(ParagraphAlignment.CENTER);
-            XWPFRun titleRun = titleParagraph.createRun();
-            titleRun.setText("企业销售管理系统 - 销售总览报表");
-            titleRun.setBold(true);
-            titleRun.setFontSize(18);
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage(PDRectangle.A4);
+            document.addPage(page);
             
-            // 生成时间
-            XWPFParagraph timeParagraph = document.createParagraph();
-            timeParagraph.setAlignment(ParagraphAlignment.CENTER);
-            XWPFRun timeRun = timeParagraph.createRun();
-            timeRun.setText("生成时间: " + LocalDateTime.now().format(DATE_FORMATTER));
-            timeRun.setFontSize(10);
-            timeRun.setColor("666666");
+            PDType0Font font = loadChineseFont(document);
             
-            // 创建空行
-            document.createParagraph();
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                float y = page.getMediaBox().getHeight() - MARGIN_TOP;
+                
+                // 标题
+                y = drawTitle(cs, font, "企业销售管理系统 - 销售总览报表", y, 18);
+                y -= 5;
+                
+                // 生成时间
+                y = drawSubtitle(cs, font, "生成时间: " + LocalDateTime.now().format(DATE_FORMATTER), y, 10);
+                y -= 20;
+                
+                // 分隔线
+                y = drawLine(cs, y);
+                y -= 20;
+                
+                // 销售统计
+                y = drawSectionTitle(cs, font, "销售统计", y, 14);
+                y -= 10;
+                
+                String[][] statsData = {
+                    {"总销售额", "CNY " + formatNumber(statistics.get("totalSales"))},
+                    {"本月销售额", "CNY " + formatNumber(statistics.get("monthlySales"))},
+                    {"日均销售额", "CNY " + formatNumber(statistics.get("dailySales"))},
+                    {"总订单数", formatNumber(statistics.get("totalOrders"))}
+                };
+                y = drawTable(cs, font, statsData, y);
+                y -= 20;
+                
+                // 销售排行榜
+                if (salesRanking != null && !salesRanking.isEmpty()) {
+                    y = drawSectionTitle(cs, font, "销售排行榜", y, 14);
+                    y -= 10;
+                    
+                    String[][] rankingData = new String[salesRanking.size()][3];
+                    for (int i = 0; i < salesRanking.size(); i++) {
+                        Map<String, Object> item = salesRanking.get(i);
+                        rankingData[i][0] = String.valueOf(i + 1);
+                        rankingData[i][1] = item.get("salesperson_name") != null ? item.get("salesperson_name").toString() : "N/A";
+                        rankingData[i][2] = "CNY " + formatNumber(item.get("total_sales"));
+                    }
+                    y = drawRankingTable(cs, font, new String[]{"排名", "销售人员", "销售额"}, rankingData, y);
+                    y -= 20;
+                }
+                
+                // 热销商品
+                if (hotProducts != null && !hotProducts.isEmpty()) {
+                    // 检查是否需要换页
+                    if (y < 200) {
+                        drawFooter(cs, font, page);
+                        cs.close();
+                        page = new PDPage(PDRectangle.A4);
+                        document.addPage(page);
+                        // 不在这里重新打开cs，直接使用新页面的逻辑
+                        // 因为我们在try-with-resources中，需要特殊处理
+                    }
+                    
+                    y = drawSectionTitle(cs, font, "热销商品", y, 14);
+                    y -= 10;
+                    
+                    String[][] productData = new String[hotProducts.size()][3];
+                    for (int i = 0; i < hotProducts.size(); i++) {
+                        Map<String, Object> item = hotProducts.get(i);
+                        productData[i][0] = String.valueOf(i + 1);
+                        
+                        String productName = null;
+                        if (item.get("product_name") != null) {
+                            productName = item.get("product_name").toString();
+                        } else if (item.get("name") != null) {
+                            productName = item.get("name").toString();
+                        } else if (item.get("productname") != null) {
+                            productName = item.get("productname").toString();
+                        }
+                        productData[i][1] = productName != null ? productName : "N/A";
+                        productData[i][2] = formatNumber(item.get("sales_quantity"));
+                    }
+                    drawRankingTable(cs, font, new String[]{"排名", "商品名称", "销售数量"}, productData, y);
+                }
+                
+                // 页脚
+                drawFooter(cs, font, page);
+            }
             
-            // 销售统计
-            createStatisticsSection(document, statistics);
-            
-            // 销售排行榜
-            createSalesRankingSection(document, salesRanking);
-            
-            // 热销商品
-            createHotProductsSection(document, hotProducts);
-            
-            // 输出PDF
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            document.write(outputStream);
+            document.save(outputStream);
             return outputStream.toByteArray();
             
         } catch (Exception e) {
@@ -89,110 +183,246 @@ public class PDFServiceImpl implements PDFService {
         }
     }
     
-    private void createOrderInfoSection(XWPFDocument document, Order order) {
-        // 订单信息标题
-        addSectionTitle(document, "订单信息");
+    /**
+     * 加载中文字体 - 使用系统内置CJK字体
+     */
+    private PDType0Font loadChineseFont(PDDocument document) throws Exception {
+        // 尝试加载系统中文字体，优先使用TTF文件（加载更简单可靠）
+        String[][] fontConfigs = {
+            {"C:/Windows/Fonts/simhei.ttf", "黑体"},       // 黑体 - TTF文件
+            {"C:/Windows/Fonts/simkai.ttf", "楷体"},       // 楷体 - TTF文件  
+            {"C:/Windows/Fonts/STSONG.TTF", "华文宋体"},   // 华文宋体
+            {"C:/Windows/Fonts/STKAITI.TTF", "华文楷体"},  // 华文楷体
+            {"/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", "文泉驿微米黑"},
+            {"/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf", "Droid"},
+            {"/System/Library/Fonts/PingFang.ttc", "苹方"}
+        };
         
-        // 订单详情表格
-        XWPFTable table = document.createTable(6, 2);
-        
-        // 设置表格内容
-        setTableCell(table, 0, 0, "订单编号");
-        setTableCell(table, 0, 1, order.getOrderNo() != null ? order.getOrderNo() : "N/A");
-        
-        setTableCell(table, 1, 0, "客户名称");
-        setTableCell(table, 1, 1, order.getCustomerName() != null ? order.getCustomerName() : "N/A");
-        
-        setTableCell(table, 2, 0, "订单金额");
-        setTableCell(table, 2, 1, "¥" + (order.getTotalAmount() != null ? order.getTotalAmount() : BigDecimal.ZERO));
-        
-        setTableCell(table, 3, 0, "订单状态");
-        setTableCell(table, 3, 1, order.getStatus() != null ? order.getStatus().getDescription() : "N/A");
-        
-        setTableCell(table, 4, 0, "下单时间");
-        setTableCell(table, 4, 1, order.getCreateTime() != null ? order.getCreateTime().format(DATE_FORMATTER) : "N/A");
-        
-        setTableCell(table, 5, 0, "更新时间");
-        setTableCell(table, 5, 1, order.getUpdateTime() != null ? order.getUpdateTime().format(DATE_FORMATTER) : "N/A");
-    }
-    
-    private void createStatisticsSection(XWPFDocument document, Map<String, Object> statistics) {
-        addSectionTitle(document, "销售统计");
-        
-        XWPFTable table = document.createTable(4, 2);
-        
-        setTableCell(table, 0, 0, "总销售额");
-        setTableCell(table, 0, 1, "¥" + formatNumber(statistics.get("totalSales")));
-        
-        setTableCell(table, 1, 0, "本月销售额");
-        setTableCell(table, 1, 1, "¥" + formatNumber(statistics.get("monthlySales")));
-        
-        setTableCell(table, 2, 0, "日均销售额");
-        setTableCell(table, 2, 1, "¥" + formatNumber(statistics.get("dailySales")));
-        
-        setTableCell(table, 3, 0, "总订单数");
-        setTableCell(table, 3, 1, formatNumber(statistics.get("totalOrders")));
-    }
-    
-    private void createSalesRankingSection(XWPFDocument document, List<Map<String, Object>> salesRanking) {
-        if (salesRanking == null || salesRanking.isEmpty()) {
-            return;
+        for (String[] config : fontConfigs) {
+            try {
+                java.io.File fontFile = new java.io.File(config[0]);
+                if (fontFile.exists()) {
+                    log.info("使用字体: {} ({})", config[1], config[0]);
+                    // PDFBox 2.x 使用InputStream加载字体
+                    try (InputStream fontStream = new java.io.FileInputStream(fontFile)) {
+                        return PDType0Font.load(document, fontStream, true);
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("字体加载失败: {} - {}", config[0], e.getMessage());
+            }
         }
         
-        addSectionTitle(document, "销售排行榜");
+        // 如果系统字体都不可用，尝试从classpath加载
+        String[] classpathFonts = {"fonts/simsun.ttc", "fonts/simhei.ttf", "fonts/msyh.ttc"};
+        for (String fontPath : classpathFonts) {
+            try {
+                ClassPathResource resource = new ClassPathResource(fontPath);
+                if (resource.exists()) {
+                    try (InputStream is = resource.getInputStream()) {
+                        // PDFBox 2.x 从InputStream加载字体
+                        return PDType0Font.load(document, is);
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("classpath字体加载失败: {}", fontPath);
+            }
+        }
         
-        XWPFTable table = document.createTable(salesRanking.size() + 1, 3);
+        // 抛出明确异常
+        throw new RuntimeException("未找到中文字体文件，请确保系统安装了中文字体（如微软雅黑、宋体等）");
+    }
+    
+    private float drawTitle(PDPageContentStream cs, PDType0Font font, String text, float y, float fontSize) throws Exception {
+        cs.beginText();
+        cs.setFont(font, fontSize);
+        float textWidth = font.getStringWidth(text) / 1000 * fontSize;
+        float x = (pageWidth() - textWidth) / 2;
+        cs.newLineAtOffset(x, y);
+        cs.showText(text);
+        cs.endText();
+        return y - fontSize - 5;
+    }
+    
+    private float drawSubtitle(PDPageContentStream cs, PDType0Font font, String text, float y, float fontSize) throws Exception {
+        cs.beginText();
+        cs.setFont(font, fontSize);
+        float textWidth = font.getStringWidth(text) / 1000 * fontSize;
+        float x = (pageWidth() - textWidth) / 2;
+        cs.newLineAtOffset(x, y);
+        cs.showText(text);
+        cs.endText();
+        return y - fontSize;
+    }
+    
+    private float drawLine(PDPageContentStream cs, float y) throws Exception {
+        cs.setLineWidth(1);
+        cs.moveTo(MARGIN_LEFT, y);
+        cs.lineTo(MARGIN_LEFT + TABLE_WIDTH, y);
+        cs.stroke();
+        return y;
+    }
+    
+    private float drawSectionTitle(PDPageContentStream cs, PDType0Font font, String text, float y, float fontSize) throws Exception {
+        cs.beginText();
+        cs.setFont(font, fontSize);
+        cs.newLineAtOffset(MARGIN_LEFT, y);
+        cs.showText(text);
+        cs.endText();
+        return y - fontSize - 5;
+    }
+    
+    private float drawTable(PDPageContentStream cs, PDType0Font font, String[][] data, float y) throws Exception {
+        float currentY = y;
+        
+        for (String[] row : data) {
+            // 绘制单元格边框
+            cs.setLineWidth(0.5f);
+            cs.moveTo(MARGIN_LEFT, currentY);
+            cs.lineTo(MARGIN_LEFT + TABLE_WIDTH, currentY);
+            cs.stroke();
+            
+            // 第一列（标签）
+            cs.beginText();
+            cs.setFont(font, 11);
+            cs.newLineAtOffset(MARGIN_LEFT + 10, currentY - 18);
+            cs.showText(row[0]);
+            cs.endText();
+            
+            // 第二列（值）
+            cs.beginText();
+            cs.setFont(font, 11);
+            cs.newLineAtOffset(MARGIN_LEFT + COL1_WIDTH + 10, currentY - 18);
+            cs.showText(row[1]);
+            cs.endText();
+            
+            currentY -= ROW_HEIGHT;
+        }
+        
+        // 底部边框
+        cs.setLineWidth(0.5f);
+        cs.moveTo(MARGIN_LEFT, currentY);
+        cs.lineTo(MARGIN_LEFT + TABLE_WIDTH, currentY);
+        cs.stroke();
+        
+        // 左右边框
+        cs.moveTo(MARGIN_LEFT, y);
+        cs.lineTo(MARGIN_LEFT, currentY);
+        cs.stroke();
+        cs.moveTo(MARGIN_LEFT + TABLE_WIDTH, y);
+        cs.lineTo(MARGIN_LEFT + TABLE_WIDTH, currentY);
+        cs.stroke();
+        
+        // 中间分隔线
+        cs.moveTo(MARGIN_LEFT + COL1_WIDTH, y);
+        cs.lineTo(MARGIN_LEFT + COL1_WIDTH, currentY);
+        cs.stroke();
+        
+        return currentY - 10;
+    }
+    
+    private float drawRankingTable(PDPageContentStream cs, PDType0Font font, String[] headers, String[][] data, float y) throws Exception {
+        float currentY = y;
+        float col1W = 60;   // 排名列宽
+        float col2W = 240;  // 名称列宽
+        float col3W = 200;  // 数值列宽
         
         // 表头
-        setTableCell(table, 0, 0, "排名");
-        setTableCell(table, 0, 1, "销售人员");
-        setTableCell(table, 0, 2, "销售额");
+        cs.setLineWidth(1);
+        cs.moveTo(MARGIN_LEFT, currentY);
+        cs.lineTo(MARGIN_LEFT + TABLE_WIDTH, currentY);
+        cs.stroke();
         
-        // 数据
-        for (int i = 0; i < salesRanking.size(); i++) {
-            Map<String, Object> item = salesRanking.get(i);
-            setTableCell(table, i + 1, 0, String.valueOf(i + 1));
-            setTableCell(table, i + 1, 1, item.get("salesperson_name") != null ? item.get("salesperson_name").toString() : "N/A");
-            setTableCell(table, i + 1, 2, "¥" + formatNumber(item.get("total_sales")));
+        cs.beginText();
+        cs.setFont(font, 12);
+        cs.newLineAtOffset(MARGIN_LEFT + 10, currentY - 18);
+        cs.showText(headers[0]);
+        cs.endText();
+        
+        cs.beginText();
+        cs.newLineAtOffset(MARGIN_LEFT + col1W + 10, currentY - 18);
+        cs.showText(headers[1]);
+        cs.endText();
+        
+        cs.beginText();
+        cs.newLineAtOffset(MARGIN_LEFT + col1W + col2W + 10, currentY - 18);
+        cs.showText(headers[2]);
+        cs.endText();
+        
+        currentY -= ROW_HEIGHT;
+        
+        // 数据行
+        for (String[] row : data) {
+            cs.setLineWidth(0.5f);
+            cs.moveTo(MARGIN_LEFT, currentY);
+            cs.lineTo(MARGIN_LEFT + TABLE_WIDTH, currentY);
+            cs.stroke();
+            
+            cs.beginText();
+            cs.setFont(font, 11);
+            cs.newLineAtOffset(MARGIN_LEFT + 10, currentY - 18);
+            cs.showText(row[0]);
+            cs.endText();
+            
+            cs.beginText();
+            cs.newLineAtOffset(MARGIN_LEFT + col1W + 10, currentY - 18);
+            cs.showText(row[1]);
+            cs.endText();
+            
+            cs.beginText();
+            cs.newLineAtOffset(MARGIN_LEFT + col1W + col2W + 10, currentY - 18);
+            cs.showText(row[2]);
+            cs.endText();
+            
+            currentY -= ROW_HEIGHT;
         }
+        
+        // 底部边框
+        cs.setLineWidth(0.5f);
+        cs.moveTo(MARGIN_LEFT, currentY);
+        cs.lineTo(MARGIN_LEFT + TABLE_WIDTH, currentY);
+        cs.stroke();
+        
+        // 左右边框
+        cs.moveTo(MARGIN_LEFT, y);
+        cs.lineTo(MARGIN_LEFT, currentY);
+        cs.stroke();
+        cs.moveTo(MARGIN_LEFT + TABLE_WIDTH, y);
+        cs.lineTo(MARGIN_LEFT + TABLE_WIDTH, currentY);
+        cs.stroke();
+        
+        // 列分隔线
+        cs.moveTo(MARGIN_LEFT + col1W, y);
+        cs.lineTo(MARGIN_LEFT + col1W, currentY);
+        cs.stroke();
+        cs.moveTo(MARGIN_LEFT + col1W + col2W, y);
+        cs.lineTo(MARGIN_LEFT + col1W + col2W, currentY);
+        cs.stroke();
+        
+        return currentY - 10;
     }
     
-    private void createHotProductsSection(XWPFDocument document, List<Map<String, Object>> hotProducts) {
-        if (hotProducts == null || hotProducts.isEmpty()) {
-            return;
-        }
-        
-        addSectionTitle(document, "热销商品");
-        
-        XWPFTable table = document.createTable(hotProducts.size() + 1, 3);
-        
-        // 表头
-        setTableCell(table, 0, 0, "排名");
-        setTableCell(table, 0, 1, "商品名称");
-        setTableCell(table, 0, 2, "销售数量");
-        
-        // 数据
-        for (int i = 0; i < hotProducts.size(); i++) {
-            Map<String, Object> item = hotProducts.get(i);
-            setTableCell(table, i + 1, 0, String.valueOf(i + 1));
-            setTableCell(table, i + 1, 1, item.get("name") != null ? item.get("name").toString() : "N/A");
-            setTableCell(table, i + 1, 2, formatNumber(item.get("sales_quantity")));
-        }
+    private void drawFooter(PDPageContentStream cs, PDType0Font font, PDPage page) throws Exception {
+        float footerY = 30;
+        cs.beginText();
+        cs.setFont(font, 9);
+        cs.newLineAtOffset(MARGIN_LEFT, footerY);
+        cs.showText("企业销售管理系统 - " + LocalDateTime.now().format(DATE_FORMATTER));
+        cs.endText();
     }
     
-    private void addSectionTitle(XWPFDocument document, String title) {
-        XWPFParagraph paragraph = document.createParagraph();
-        paragraph.setSpacingBefore(200);
-        XWPFRun run = paragraph.createRun();
-        run.setText(title);
-        run.setBold(true);
-        run.setFontSize(14);
+    private float pageWidth() {
+        return PDRectangle.A4.getWidth();
     }
     
-    private void setTableCell(XWPFTable table, int row, int col, String text) {
-        XWPFTableRow tableRow = table.getRow(row);
-        XWPFTableCell cell = tableRow.getCell(col);
-        cell.setText(text != null ? text : "");
+    private String getStatusText(Object status) {
+        if (status == null) {
+            return "N/A";
+        }
+        if (status instanceof OrderStatus) {
+            return ((OrderStatus) status).getDescription();
+        }
+        return status.toString();
     }
     
     private String formatNumber(Object value) {

@@ -24,11 +24,12 @@ public class ProductController {
     public ResponseEntity<?> getProducts(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String keyword) {
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String category) {
         
         // 获取商品列表
-        List<Product> products = productService.getProducts(page, size, keyword);
-        long total = productService.getProductCount(keyword);
+        List<Product> products = productService.getProducts(page, size, keyword, category);
+        long total = productService.getProductCount(keyword, category);
         
         // 构建分页响应
         Map<String, Object> data = new HashMap<>();

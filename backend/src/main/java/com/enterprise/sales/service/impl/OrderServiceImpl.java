@@ -110,9 +110,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             throw new RuntimeException("订单不存在");
         }
         
-        // 只有待处理状态的订单才能修改
-        if (existingOrder.getStatus() != OrderStatus.PENDING) {
-            throw new RuntimeException("只有待处理状态的订单才能修改");
+        // 已完成或已取消的订单不能修改
+        if (existingOrder.getStatus() == OrderStatus.COMPLETED || existingOrder.getStatus() == OrderStatus.CANCELLED) {
+            throw new RuntimeException("已完成或已取消的订单不能修改");
         }
         
         // 更新订单信息
@@ -121,6 +121,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         }
         if (order.getSalespersonId() != null) {
             existingOrder.setSalespersonId(order.getSalespersonId());
+        }
+        if (order.getStatus() != null) {
+            existingOrder.setStatus(order.getStatus());
         }
         
         existingOrder.setUpdateTime(LocalDateTime.now());

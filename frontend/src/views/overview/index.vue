@@ -361,24 +361,20 @@ const initCharts = async () => {
 // 打印报表
 const printReport = async () => {
   try {
-    ElMessage.info('正在生成PDF报表...')
+    ElMessage.info('正在生成报表PDF...')
     
     const response = await overviewApi.printReport()
     
-    if (response.code === 200) {
-      // 创建下载链接
-      const blob = new Blob([response.data], { type: 'application/pdf' })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `销售总览报表_${new Date().toISOString().slice(0, 10)}.pdf`
-      link.click()
-      window.URL.revokeObjectURL(url)
-      
-      ElMessage.success('报表生成成功')
-    } else {
-      ElMessage.error(response.message || '报表生成失败')
-    }
+    // responseType为blob时，response就是blob数据本身
+    const blob = new Blob([response], { type: 'application/pdf' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `销售总览报表_${new Date().toISOString().slice(0, 10)}.pdf`
+    link.click()
+    window.URL.revokeObjectURL(url)
+    
+    ElMessage.success('PDF报表下载成功')
   } catch (error: any) {
     console.error('报表生成失败:', error)
     ElMessage.error('报表生成失败: ' + (error.message || '请检查网络连接'))

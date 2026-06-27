@@ -90,14 +90,6 @@ public interface AIService {
     List<Map<String, Object>> executeSQL(String sql);
     
     /**
-     * RAG文档检索
-     * @param query 查询内容
-     * @param topK 返回数量
-     * @return 相关文档
-     */
-    List<Map<String, Object>> searchDocuments(String query, int topK);
-    
-    /**
      * 生成回答
      * @param question 用户问题
      * @param context 上下文信息

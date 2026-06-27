@@ -70,9 +70,19 @@ public interface ProductService extends IService<Product> {
     List<Product> getProducts(int page, int size, String keyword);
     
     /**
+     * 获取商品列表（支持分页、搜索和分类筛选）
+     */
+    List<Product> getProducts(int page, int size, String keyword, String category);
+    
+    /**
      * 获取商品总数
      */
     long getProductCount(String keyword);
+    
+    /**
+     * 获取商品总数（支持分类筛选）
+     */
+    long getProductCount(String keyword, String category);
     
     /**
      * 获取商品销售统计

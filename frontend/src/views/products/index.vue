@@ -38,8 +38,8 @@
       <el-table-column label="商品图片" width="120">
         <template #default="{ row }">
           <el-image 
-            :src="row.image || 'https://via.placeholder.com/80'" 
-            :preview-src-list="[row.image]"
+            :src="row.imageUrl || 'https://via.placeholder.com/80'" 
+            :preview-src-list="[row.imageUrl]"
             fit="cover"
             style="width: 80px; height: 80px; border-radius: 4px;"
           />
@@ -52,10 +52,10 @@
           <span style="color: #f56c6c; font-weight: bold;">¥{{ row.price?.toFixed(2) }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="stock" label="库存" width="100">
+      <el-table-column prop="stockQuantity" label="库存" width="100">
         <template #default="{ row }">
-          <el-tag :type="row.stock < 10 ? 'danger' : 'success'">
-            {{ row.stock }}
+          <el-tag :type="row.stockQuantity < 10 ? 'danger' : 'success'">
+            {{ row.stockQuantity }}
           </el-tag>
         </template>
       </el-table-column>
@@ -141,12 +141,12 @@
     <el-dialog v-model="viewDialogVisible" title="商品详情" width="600px">
       <div class="product-detail">
         <div class="detail-image">
-          <img :src="currentProduct.image || 'https://via.placeholder.com/300'" alt="商品图片">
+          <img :src="currentProduct.imageUrl || 'https://via.placeholder.com/300'" alt="商品图片">
         </div>
         <div class="detail-info">
           <h3>{{ currentProduct.name }}</h3>
           <p class="price">¥{{ currentProduct.price?.toFixed(2) }}</p>
-          <p class="stock">库存: {{ currentProduct.stock }}</p>
+          <p class="stock">库存: {{ currentProduct.stockQuantity }}</p>
           <p class="category">分类: {{ currentProduct.category }}</p>
           <p class="description">{{ currentProduct.description }}</p>
           <p class="time">创建时间: {{ currentProduct.createTime }}</p>
